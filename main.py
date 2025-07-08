@@ -293,7 +293,7 @@ async def trips_page(request: Request):
             new_trip_id = str(uuid4())
             cur.execute(
                 'INSERT INTO trips (trip_id, admin_family_id, family_ids, child_ids, status, visibility, location, destination, description, date, time, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (new_trip_id, family_id, json.dumps([family_id]), json.dumps(child_ids_input.value), True, visibility_input.value.lower(), '', destination_input.value, description_input.value, date_input.value, time_input.value, image_base64_string)
+                (new_trip_id, family_id, json.dumps([family_id]), json.dumps(child_ids_input.value), False, visibility_input.value.lower(), '', destination_input.value, description_input.value, date_input.value, time_input.value, image_base64_string)
             )
             cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
             row = cur.fetchone()
@@ -304,6 +304,65 @@ async def trips_page(request: Request):
             trip_ids.append(new_trip_id)
             cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
             con.commit()
+    
+    async def join_trip():
+        # Validation: Check if trip_id_input is present and valid
+        trip_id = trip_id_input.value.strip() if trip_id_input.value else ''
+        if not trip_id:
+            ui.notification('Trip ID is required.', color='green')
+            return
+        if len(trip_id) < 3:
+            ui.notification('Trip ID must be at least 3 characters.', color='green')
+            return
+
+        with sqlite3.connect(DATABASE_PATH) as con:
+            ui.notification('Joining a trip...', color='green')
+            cur = con.cursor()
+            # Only select adult_ids, since admin_id is already known or can be checked separately
+            cur.execute('SELECT adult_ids FROM families WHERE family_id=?', (family_id,))
+            row = cur.fetchone()
+            is_parent = False
+            if row:
+                adult_ids = json.loads(row[0])
+                # Check if user is admin or in adult_ids
+                cur.execute('SELECT admin_user_id FROM families WHERE family_id=?', (family_id,))
+                admin_id_row = cur.fetchone()
+                admin_id = admin_id_row[0] if admin_id_row else None
+                if user_id == admin_id or user_id in adult_ids:
+                    is_parent = True
+            if not is_parent:
+                ui.notification('You are not a parent in this family.', color='red')
+                return
+
+            # Check if trip exists
+            cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (trip_id,))
+            row = cur.fetchone()
+            if not row:
+                ui.notification('Trip not found.', color='red')
+                return
+            family_ids = json.loads(row[0])
+            if family_id in family_ids:
+                ui.notification('Your family is already attending this trip.', color='orange')
+                return
+
+            # All checks passed, join the trip
+            family_ids.append(family_id)
+            cur.execute('UPDATE trips SET family_ids=? WHERE trip_id=?', (json.dumps(family_ids), trip_id))
+
+            # Also add the trip to the family's trip_ids if not already present
+            cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
+            row = cur.fetchone()
+            if row and row[0]:
+                trip_ids = json.loads(row[0])
+            else:
+                trip_ids = []
+            if trip_id not in trip_ids:
+                trip_ids.append(trip_id)
+                cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
+
+            con.commit()
+            ui.notification('Trip joined successfully!', color='green')
+            ui.timer(0.1, ui.navigate.reload, once=True)
 
     ui.label('Trips').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
@@ -394,11 +453,12 @@ async def trips_page(request: Request):
                         trip_id = trip[0]
                         admin_family_id = trip[1]
                         family_ids = trip[2]
-                        status = trip[3]
-                        visibility = trip[4]
-                        location = trip[5]
-                        destination = trip[6]
-                        description = trip[7]
+                        child_ids = trip[3]
+                        status = trip[4]
+                        visibility = trip[5]
+                        location = trip[6]
+                        destination = trip[7]
+                        description = trip[8]
                         date = trip[9]
                         time = trip[10]
                         image = trip[11]
@@ -420,23 +480,23 @@ async def trips_page(request: Request):
                             else:
                                 ui.label('No image available').classes('absolute inset-0 flex items-center justify-center text-gray-500 opacity-50 w-full h-full')
                             with ui.row().classes('relative z-10 p-0 w-full items-center justify-between'):
-                                with ui.row().classes('items-center gap-0'):
-                                    with ui.item_section().props('avatar'):
-                                        ui.icon('directions_car')
-                                    with ui.column():
-                                        ui.item_label(destination)
-                                        ui.item_label(f'{date} • {time}').props('caption')
-                                        ui.item_label(f'{description}').props('caption')
-                                        if family_id == admin_family_id:
-                                            ui.item_label('Made by your family.').props('caption').classes('text-gray-400')
-                                        else:
-                                            ui.item_label('Your family is attending.').props('caption').classes('text-gray-400')
+                                #with ui.row().classes('items-center gap-0'):
+                                #    with ui.item_section().props('avatar'):
+                                #        ui.icon('directions_car')
+                                with ui.column().classes('items-center gap-0'):
+                                    ui.item_label(destination)
+                                    ui.item_label(f'{date} • {time}').props('caption')
+                                    ui.item_label(f'{description}').props('caption')
+                                    if family_id == admin_family_id:
+                                        ui.item_label('Made by your family.').props('caption').classes('text-gray-400')
+                                    else:
+                                        ui.item_label('Your family is attending.').props('caption').classes('text-gray-400')
                                 with ui.column().classes('items-end gap-1'):
-                                    ui.item_label(status).props('caption')
+                                    ui.item_label('Active' if status == 1 else 'Inactive').props('caption')
                                     ui.chip('View', icon='article', on_click=lambda tid=trip_id: ui.navigate.to(f'/trips/view/{tid}')).props('flat color="blue-200" size=sm')
                                     if family_id == admin_family_id:
                                         ui.chip('Edit', icon='edit', on_click=lambda tid=trip_id: ui.navigate.to(f'/trips/edit/{tid}')).props('flat color="orange-200" size=sm')
-                                        if status == 'Active':
+                                        if status == 1:
                                             ui.chip('Driver Dashboard', icon='directions_car', on_click=lambda tid=trip_id: ui.navigate.to(f'/trips/drive/{tid}')).props('flat color="green-400" size=sm')
                                             ui.chip('Stop and Delete', icon='dangerous', on_click=lambda tid=trip_id: on_end_trip_click(tid)).props('flat color="red-400" size=sm')
                                         else:
@@ -444,7 +504,7 @@ async def trips_page(request: Request):
                                             ui.chip('Delete', icon='dangerous', on_click=lambda tid=trip_id: on_end_trip_click(tid)).props('flat color="red-400" size=sm')
                                     else:
                                         ui.chip('Leave Trip', icon='exit_to_app', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="red-200" size=sm')
-                            ui.separator()
+                            #ui.separator()
             with ui.tab_panel(create):
                 ui.label("Create a new trip on behalf of your family.")
                 ui.label("Please enter the exact street address of the location for destination.")
@@ -476,9 +536,30 @@ async def trips_page(request: Request):
                 #    else:
                 #        child_ids = []
                 #ui.select(names, multiple=True, value=names[:2], label='comma-separated') \
-                child_ids = ['John', 'Jane', 'Jim', 'Jill']
+                with sqlite3.connect(DATABASE_PATH) as con:
+                    cur = con.cursor()
+                    cur.execute('SELECT child_ids FROM families WHERE family_id=?', (family_id,))
+                    child_ids = cur.fetchone()
+                    if child_ids:
+                        child_ids = json.loads(child_ids[0])
+                    else:
+                        child_ids = []
+                #child_ids = ['John', 'Jane', 'Jim', 'Jill']
+                with sqlite3.connect(DATABASE_PATH) as con:
+                    cur = con.cursor()
+                    if child_ids:
+                        placeholders = ','.join(['?'] * len(child_ids))
+                        query = f'SELECT user_id, first_name, last_name FROM users WHERE user_id IN ({placeholders})'
+                        cur.execute(query, child_ids)
+                        child_rows = cur.fetchall()
+                    else:
+                        child_rows = []
+                    for user_id, first_name, last_name in child_rows:
+                        ui.label(f'{user_id}: {first_name} {last_name}')
+                        
                 child_ids_input = ui.select(child_ids, multiple=True, value=[], label='Select which of your children are attending this trip') \
                     .classes('w-full')
+                ui.label('This is not the ideal way to do this, but it works for now.')
                 
                 image_input = ui.upload(
                     label='Upload an image (This is the thumbnail for the trip)',
@@ -492,8 +573,82 @@ async def trips_page(request: Request):
                 ui.button('Create Trip', on_click=create_trip, color='indigo').classes('w-full')
             with ui.tab_panel(join):
                 ui.label('Join Trip')
+                trip_id_input = ui.input(label='Trip ID').props('outlined clearable').classes('w-full mb-3')
+                ui.button('Join Trip', on_click=join_trip, color='indigo').classes('w-full')
     else:
         ui.label('You are a child. You can view which trips your family is attending.')
+
+@ui.page('/trips/view/{item_path:path}')
+async def trip_view_page(request: Request, item_path: str):
+    # Top bar
+    with ui.header(elevated=True).classes('bg-indigo'):
+        with ui.row().classes('items-center w-full'):
+            ui.button(
+                icon='arrow_back',
+                on_click=lambda: ui.run_javascript('history.back()')
+            ).props('flat round color="white"').classes('mr-2')
+            ui.label(f'Trip: {item_path}').classes('text-lg')
+    ui.button('Copy Trip ID to Clipboard', on_click=lambda: ui.clipboard.write(item_path), color='indigo')
+
+    leaflet_map = ui.leaflet(center=(51.505, -0.09), zoom=15, options={'attributionControl': True}).classes('h-96 w-full')
+
+    leaflet_map.clear_layers()
+
+    leaflet_map.tile_layer(
+        url_template=r'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+        options={
+            'maxZoom': 19,
+            'attribution': '<a href="http://example.com">Careavan</a>™ 💜'
+        },
+    )
+
+    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'draggable': False})
+
+    # Live stats
+    ui.label('Live Stats').classes('text-xl font-bold mb-6 text-center text-indigo')
+    current_location_label = ui.label('The current location is:').classes('text-sm mb-2')
+
+    visibility_label = ui.label('Visibility:').classes('text-sm mb-2')
+
+    async def update_visibility():
+        with sqlite3.connect(DATABASE_PATH) as con:
+            cur = con.cursor()
+            cur.execute('SELECT visibility FROM trips WHERE trip_id=?', (item_path,))
+            row = cur.fetchone()
+
+            if row and row[0]:
+                visibility_label.set_text(f'Visibility: {row[0].capitalize()}')
+            else:
+                visibility_label.set_text('Visibility: Unknown')
+    await update_visibility()
+
+    async def update_location():
+        with sqlite3.connect(DATABASE_PATH) as con:
+            cur = con.cursor()
+
+            cur.execute('SELECT location FROM trips WHERE trip_id=?', (item_path,))
+            row = cur.fetchone()
+
+            if row and row[0]:
+                try:
+                    lat_str, lon_str = [s.strip() for s in row[0].split(',')]
+
+                    lat, lon = float(lat_str), float(lon_str)
+
+                    location_marker.latlng = (lat, lon)
+
+                    leaflet_map.center = (lat, lon)
+
+                    current_location_label.set_text(f'The current location is: {lat:.5f}, {lon:.5f}')
+                except Exception as e:
+                    print(f"Failed to update location: {e} (row[0]={row[0]})")
+
+                    ui.notification('Failed to update location')
+            else:
+                current_location_label.set_text('The current location is: Unknown')
+
+    await update_location()  # Initial call to set the location immediately
+    ui.timer(5.0, update_location, once=False)
 
 @ui.page('/family')
 async def family_page(request: Request):
