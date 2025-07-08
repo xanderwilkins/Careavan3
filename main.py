@@ -219,6 +219,16 @@ async def login_page(request: Request):
     ui.button('Login', on_click=on_login_click, color='indigo').classes('w-full')
     ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
 
+@ui.page('/explore')
+async def explore_page(request: Request):
+    _app_footer()
+
+    session_id = request.cookies.get(SESSION_COOKIE)
+    
+    if not await verify_session(session_id):
+        ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
+        return
 @ui.page('/trips')
 async def trips_page(request: Request):
     _app_footer()
@@ -646,6 +656,11 @@ async def trip_view_page(request: Request, item_path: str):
                     ui.notification('Failed to update location')
             else:
                 current_location_label.set_text('The current location is: Unknown')
+    
+    with sqlite3.connect(DATABASE_PATH) as con:
+        cur = con.cursor()
+        cur.execute('SELECT description, destination, date, time, visibility FROM trips WHERE trip_id=?', (item_path,))
+        row = cur.fetchone()
 
     await update_location()  # Initial call to set the location immediately
     ui.timer(5.0, update_location, once=False)
