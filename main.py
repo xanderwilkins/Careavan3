@@ -389,9 +389,9 @@ async def trips_page(request: Request):
                     async def on_start_trip_click(trip_id):
                         with sqlite3.connect(DATABASE_PATH) as con:
                             cur = con.cursor()
-                            cur.execute('UPDATE trips SET status=? WHERE trip_id=?', ('Active', trip_id))
+                            cur.execute('UPDATE trips SET status=? WHERE trip_id=?', (True, trip_id))
                             con.commit()
-                            ui.notification('Starting trip...')
+                            ui.notification('Starting trip...', color='green')
                             ui.navigate.to('/trips/drive/' + str(trip_id))
                     
                     async def on_end_trip_click(trip_id):
@@ -649,6 +649,226 @@ async def trip_view_page(request: Request, item_path: str):
 
     await update_location()  # Initial call to set the location immediately
     ui.timer(5.0, update_location, once=False)
+
+@ui.page('/trips/edit/{item_path:path}')
+async def trip_edit_page(request: Request, item_path: str):
+    with ui.header(elevated=True).classes('bg-indigo'):
+        with ui.row().classes('items-center w-full'):
+            ui.button(
+                icon='arrow_back',
+                on_click=lambda: ui.run_javascript('history.back()')
+            ).props('flat round color="white"').classes('mr-2')
+
+            ui.label(f'Edit Trip: {item_path}').classes('text-lg')
+
+    #name_input = ui.input(label='Name').props('outlined clearable').classes('w-full mb-3')
+    destination_input = ui.input(label='Destination 🗺️').props('outlined clearable').classes('w-full mb-3')
+    description_input = ui.input(label='Description 📝').props('outlined clearable').classes('w-full mb-3')
+    with ui.input('Date').classes('w-full') as date:
+        with ui.menu().props('no-parent-event') as menu:
+            with ui.date().props(''':options="date => { const today = new Date(new Date().setHours(0, 0, 0, 0)); const limit = new Date(today); limit.setDate(today.getDate() + 7); return new Date(date) >= today && new Date(date) < limit; }"''').bind_value(date):
+                with ui.row().classes('justify-end'):
+                    ui.button('Close', on_click=menu.close).props('flat')
+        with date.add_slot('append'):
+            ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
+
+    with ui.input('Time').classes('w-full') as time:
+        with ui.menu().props('no-parent-event') as menu:
+            with ui.time().bind_value(time):
+                with ui.row().classes('justify-end'):
+                    ui.button('Close', on_click=menu.close).props('flat')
+        with time.add_slot('append'):
+            ui.icon('access_time').on('click', menu.open).classes('cursor-pointer')
+    
+    visibility_input = ui.select(['Public', 'Private'], label='Visibility').props('outlined').classes('w-full mb-3')  # Dropdown for selecting visibility of the trip.
+    ui.label('This controls who can see this trip on the explore page.').classes('text-xs text-gray-400 mb-2')
+
+    status_label = ui.label().classes('text-center w-full min-h-[20px] mb-3')
+
+    async def get_trip_info():
+        try:
+            with sqlite3.connect(DATABASE_PATH) as con:
+                cur = con.cursor()
+                cur.execute('SELECT description, destination, date, time, visibility FROM trips WHERE trip_id=?', (item_path,))
+                row = cur.fetchone()
+                if row:
+                    description_input.value = row[0]
+                    destination_input.value = row[1]
+                    date.value = row[2]
+                    time.value = row[3]
+                    visibility_input.value = row[4].capitalize()
+                    ui.notification('Trip loaded successfully.', color='green')
+                else:
+                    ui.notification('Trip not found.', color='red')
+        except Exception as e:
+            ui.notification(f'Failed to load trip: {str(e)}', color='red')
+    await get_trip_info()
+
+    async def update_trip_info():
+        try:
+            with sqlite3.connect(DATABASE_PATH) as con:
+                cur = con.cursor()
+                cur.execute(
+                    'UPDATE trips SET description=?, destination=?, date=?, time=?, visibility=? WHERE trip_id=?',
+                    (
+                        description_input.value,
+                        destination_input.value,
+                        date.value,
+                        time.value,
+                        visibility_input.value.lower(),  # store as lowercase for consistency
+                        item_path
+                    )
+                )
+                con.commit()
+                ui.notification('Trip updated successfully.', color='green')
+        except Exception as e:
+            ui.notification(f'Failed to update trip: {str(e)}', color='red')
+    
+    with ui.row().classes('justify-end gap-x-2 mt-4'):
+        #ui.button("Reset", on_click=reset_general_fields).props('flat')
+        #ui.button("Save Changes", on_click=update_general_fields, color='primary')
+        ui.button("Reset", on_click=get_trip_info, color='indigo').props('flat')
+        ui.button("Save Changes", on_click=update_trip_info, color='indigo')
+
+@ui.page('/trips/drive/{item_path:path}')
+async def trip_drive_page(request: Request, item_path: str):
+    session_id = request.cookies.get(SESSION_COOKIE)
+    
+    status_label = ui.label('').classes('text-sm mb-2')
+
+    with sqlite3.connect(DATABASE_PATH) as con:
+        cur = con.cursor()
+        current_user_id = await retrieve_user_id_from_session_id(session_id)
+        cur.execute('SELECT family_id FROM users WHERE user_id=?', (current_user_id,))
+        row = cur.fetchone()
+
+        if not row or not row[0]:
+            ui.notification('You are not in a family.', color='red')
+            return
+        
+        family_id = row[0]
+        cur.execute('SELECT adult_ids FROM families WHERE family_id=?', (family_id,))
+        row = cur.fetchone()
+
+        if not row:
+            ui.notification('Family not found.', color='red')
+            return
+        
+        adult_ids = json.loads(row[0])
+
+        if current_user_id not in adult_ids:
+            ui.notification('You are not authorized to drive this trip.', color='red')
+            return
+        
+        cur.execute('SELECT trip_id FROM trips WHERE trip_id=? AND admin_family_id=?', (item_path, family_id))
+        row = cur.fetchone()
+
+        if not row or not row[0]:
+            ui.notification('This trip is not owned by your family.', color='red')
+            return
+        
+        cur.execute('SELECT status FROM trips WHERE trip_id=?', (item_path,))
+        row = cur.fetchone()
+        
+        if row[0] != True:
+            ui.notification('This trip is not active.', color='red')
+            return
+
+    # UI header
+    with ui.header(elevated=True).classes('bg-indigo'):
+        with ui.row().classes('items-center w-full'):
+            ui.button(
+                icon='arrow_back',
+                on_click=lambda: ui.run_javascript('history.back()')
+            ).props('flat round color="white"').classes('mr-2')
+            ui.label(f'Driving for Trip: {item_path}').classes('text-lg')
+
+    ui.label('You are driving this trip. Anyone in your family can open this page and location will update from their device if allowed.').classes('text-sm mb-2')
+
+    # Map setup
+    leaflet_map = ui.leaflet(center=(51.505, -0.09), zoom=15, options={'attributionControl': True}).classes('h-96 w-full')
+    leaflet_map.clear_layers()
+    leaflet_map.tile_layer(
+        url_template=r'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+        options={
+            'maxZoom': 19,
+            'attribution': '<a href="http://example.com">Careavan</a>™ 💜'
+        },
+    )
+    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'draggable': False})
+    current_location_label = ui.label('The current location is:').classes('text-sm mb-2')
+
+    # Poll the trip's location from the DB and update the map for all viewers
+    async def update_location():
+        with sqlite3.connect(DATABASE_PATH) as con:
+            cur = con.cursor()
+            cur.execute('SELECT location FROM trips WHERE trip_id=?', (item_path,))
+            row = cur.fetchone()
+            if row and row[0]:
+                try:
+                    lat_str, lon_str = [s.strip() for s in row[0].split(',')]
+                    lat, lon = float(lat_str), float(lon_str)
+                    location_marker.latlng = (lat, lon)
+                    leaflet_map.center = (lat, lon)
+                    current_location_label.set_text(f'The current location is: {lat:.5f}, {lon:.5f}')
+                except Exception as e:
+                    print(f"Failed to update location: {e} (row[0]={row[0]})")
+                    ui.notification('Failed to update location')
+            else:
+                current_location_label.set_text('The current location is: Unknown')
+    
+    await update_location()  # Initial call to set the location immediately
+    ui.timer(1.0, update_location, once=False)
+
+    # If the user allows, update the trip's location in the DB every 10 seconds
+    async def send_location_to_db():
+        try:
+            response = await ui.run_javascript('''
+                return await new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        reject(new Error('Geolocation is not supported by your browser'));
+                    } else {
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                resolve({
+                                    latitude: position.coords.latitude,
+                                    longitude: position.coords.longitude,
+                                });
+                            },
+                            () => {
+                                reject(new Error('Unable to retrieve your location'));
+                            }
+                        );
+                    }
+                });
+            ''', timeout=5.0)
+            lat, lon = response["latitude"], response["longitude"]
+            with sqlite3.connect(DATABASE_PATH) as con:
+                cur = con.cursor()
+                cur.execute('UPDATE trips SET location=? WHERE trip_id=?', (f"{lat},{lon}", item_path))
+
+                con.commit()
+        except Exception as e:
+            print(f"Location update error: {e}")
+
+    # Start auto-tracking location if possible
+    ui.timer(5.0, send_location_to_db, once=False)
+    
+    async def stop_and_finish_trip():
+        with sqlite3.connect(DATABASE_PATH) as con:
+            cur = con.cursor()
+            # get admin_family_id from trips table
+            cur.execute('SELECT admin_family_id FROM trips WHERE trip_id=?', (item_path,))
+            admin_family_id = cur.fetchone()
+            if admin_family_id:  # Make sure it's not None
+                cur.execute('DELETE FROM trips WHERE trip_id=? AND admin_family_id=?', (item_path, admin_family_id[0]))
+
+            con.commit()
+
+            ui.notification('Trip stopped and finished.', color='green')
+            ui.navigate.to('/trips')
+    
+    ui.button('Stop and Finish Trip', on_click=stop_and_finish_trip).props('primary color="red"').classes('w-full')
 
 @ui.page('/family')
 async def family_page(request: Request):
