@@ -229,6 +229,26 @@ async def explore_page(request: Request):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
         ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
         return
+    
+    user_id = await retrieve_user_id_from_session_id(session_id)
+
+    with sqlite3.connect(DATABASE_PATH) as con:
+        cur = con.cursor()
+        cur.execute('SELECT family_id FROM users WHERE user_id=?', (user_id,))
+        family_id = cur.fetchone()
+        if family_id and family_id[0]:
+            family_id = family_id[0]
+        else:
+            ui.label('You are not in a family.').classes('text-2xl font-bold mb-6 text-center text-indigo')
+            return
+    with sqlite3.connect(DATABASE_PATH) as con:
+        cur = con.cursor()
+        cur.execute('SELECT role FROM users WHERE user_id=?', (user_id,))
+        role = cur.fetchone()
+    
+    if role and role[0] == 'parent':
+        ui.label('Trips').classes('text-2xl font-bold mb-6 text-center text-indigo')
+        ui.label("roblox")
 @ui.page('/trips')
 async def trips_page(request: Request):
     _app_footer()
@@ -620,6 +640,11 @@ async def trip_view_page(request: Request, item_path: str):
 
     visibility_label = ui.label('Visibility:').classes('text-sm mb-2')
 
+    child_ids = []
+    
+    for child in child_ids:
+        ui.label(child)
+
     async def update_visibility():
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
@@ -631,6 +656,16 @@ async def trip_view_page(request: Request, item_path: str):
             else:
                 visibility_label.set_text('Visibility: Unknown')
     await update_visibility()
+
+    async def update_child_ids():
+        with sqlite3.connect(DATABASE_PATH) as con:
+            cur = con.cursor()
+            cur.execute('SELECT child_ids FROM trips WHERE trip_id=?', (item_path,))
+            row = cur.fetchone()
+
+            if row and row[0]:
+                child_ids = json.loads(row[0])
+    await update_child_ids()
 
     async def update_location():
         with sqlite3.connect(DATABASE_PATH) as con:
@@ -696,9 +731,10 @@ async def trip_edit_page(request: Request, item_path: str):
             ui.icon('access_time').on('click', menu.open).classes('cursor-pointer')
     
     visibility_input = ui.select(['Public', 'Private'], label='Visibility').props('outlined').classes('w-full mb-3')  # Dropdown for selecting visibility of the trip.
-    ui.label('This controls who can see this trip on the explore page.').classes('text-xs text-gray-400 mb-2')
 
-    status_label = ui.label().classes('text-center w-full min-h-[20px] mb-3')
+    #child_ids_input = ui.select(child_ids, multiple=True, value=[], label='Select which of your children are attending this trip') \
+    #                .classes('w-full')
+    #ui.label('This is not the ideal way to do this, but it works for now.')
 
     async def get_trip_info():
         try:
@@ -712,6 +748,7 @@ async def trip_edit_page(request: Request, item_path: str):
                     date.value = row[2]
                     time.value = row[3]
                     visibility_input.value = row[4].capitalize()
+                    
                     ui.notification('Trip loaded successfully.', color='green')
                 else:
                     ui.notification('Trip not found.', color='red')
