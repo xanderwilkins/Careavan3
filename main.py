@@ -552,8 +552,18 @@ async def trip_edit_page(request: Request, item_path: str):
                 #with ui.item().classes('relative overflow-hidden max-h-40'):
                 #    ui.label(str(trip_id))
                 #    ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='indigo')
+                with sqlite3.connect(DATABASE_PATH) as con:
+                    cur = con.cursor()
+                    #cur.execute("SELECT last_name FROM users WHERE user_id=?", (admin_family_id,))
+                    cur.execute("SELECT last_name FROM users WHERE user_id=(SELECT admin_user_id FROM families WHERE family_id=?)", (admin_family_id,))
+                    admin_name = cur.fetchone()
+                    if admin_name:
+                        last_name = admin_name[0]
+                    else:
+                        admin_name = "Unknown"
+                        last_name = "Unkown"
                 with ui.item().classes('relative overflow-hidden max-h-40 flex justify-between items-center'):
-                    ui.label(str(trip_id)).classes('text-left')  # left aligned by default, explicit here
+                    ui.label(f"Public trip by the {last_name} family. • Starts at: {date} / {time}").classes('text-left')  # left aligned by default, explicit here
                     ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='indigo')
             #for row in rows:
             #    trip_id, admin_family_id, family_ids, status, visibility, location, destination, date, time = row
