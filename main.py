@@ -441,7 +441,7 @@ async def discover_page(request: Request):
                 try:
                     default_traits = json.loads(traits_row[0])
                 except json.JSONDecodeError:
-                    print(f"Warning: Could not decode traits for family {family_id}")
+                    #print(f"Warning: Could not decode traits for family {family_id}")
                     default_traits = [] # Fallback to empty if JSON is invalid
 
     # Session is valid, continue with page content
@@ -1556,7 +1556,7 @@ async def settings_page(request: Request):
         security_tab = ui.tab('Security', icon='lock')
     with ui.tab_panels(tabs, value=general_tab).classes('w-full mt-4'):
         with ui.tab_panel(general_tab):
-            email_input = ui.input('Email').props('type=email outlined clearable').classes('w-full mb-3')
+            email_input = ui.input('Email').props('type=email outlined clearable readonly').classes('w-full mb-3')
             first_name_input = ui.input('First Name').props('outlined clearable').classes('w-full mb-3')
             last_name_input = ui.input('Last Name').props('outlined clearable').classes('w-full mb-3')
 
@@ -1583,13 +1583,13 @@ async def settings_page(request: Request):
                     ui.notification('All fields are required.', color='red')
                     return
 
-                with sqlite3.connect(DATABASE_PATH) as con: # Make sure user isn't already in a family.
-                    cur = con.cursor() # Make sure user isn't already in a family.
-                    cur.execute(' SELECT family_id FROM users WHERE user_id=?', (user_id,))
-                    family_id = cur.fetchone()
-                    if family_id and family_id[0] != '':
-                        ui.notification('You are in a family. Please leave the family before changing your general settings.', color='red')
-                        return
+                #with sqlite3.connect(DATABASE_PATH) as con: # Make sure user isn't already in a family.
+                #    cur = con.cursor() # Make sure user isn't already in a family.
+                #    cur.execute(' SELECT family_id FROM users WHERE user_id=?', (user_id,))
+                #    family_id = cur.fetchone()
+                #    if family_id and family_id[0] != '':
+                #        ui.notification('You are in a family. Please leave the family before changing your general settings.', color='red')
+                #        return
 
                 with sqlite3.connect(DATABASE_PATH) as con:
                     ui.notification('Working on it...', color='green')
