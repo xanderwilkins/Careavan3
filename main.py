@@ -768,7 +768,7 @@ async def trips_page(request: Request):
                             con.commit()
 
                             ui.notification('Trip stopped and finished.', color='green')
-                            ui.navigate.reload()
+                            ui.navigate.to("/trips")
                         else:
                             ui.notification('Trip not found.', color='red')
                 async def on_leave_trip_click(trip_id):
