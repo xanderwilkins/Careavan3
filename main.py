@@ -942,7 +942,7 @@ async def trip_view_page(request: Request, item_path: str):
         },
     )
 
-    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'draggable': False})
+    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'attributionControl': True})
 
     # Live stats
     ui.label('Live Stats').classes('text-xl font-bold mb-6 text-center text-indigo')
@@ -1139,7 +1139,7 @@ async def trip_drive_page(request: Request, item_path: str):
             'attribution': '<a href="http://example.com">Careavan</a>™ 💜'
         },
     )
-    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'draggable': False})
+    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'attributionControl': True})
     current_location_label = ui.label('The current location is:').classes('text-sm mb-2')
 
     # Poll the trip's location from the DB and update the map for all viewers
@@ -1221,7 +1221,7 @@ async def trip_drive_page(request: Request, item_path: str):
                 con.commit()
 
                 ui.notification('Trip stopped and finished.', color='green')
-                ui.navigate.reload()
+                ui.navigate.to('/trips')
             else:
                 ui.notification('Trip not found.', color='red')
     
