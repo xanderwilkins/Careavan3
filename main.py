@@ -746,42 +746,31 @@ async def trips_page(request: Request):
                         ui.navigate.to('/trips/drive/' + str(trip_id))
                 
                 async def on_end_trip_click(trip_id):
-                    ui.notification('Ending trip...', color='orange')
                     with sqlite3.connect(DATABASE_PATH) as con:
                         cur = con.cursor()
+                        # get admin_family_id from trips table
+                        cur.execute('SELECT admin_family_id FROM trips WHERE trip_id=?', (trip_id,))
+                        admin_family_id = cur.fetchone()
+                        if admin_family_id:  # Make sure it's not None
+                            cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (trip_id,))
+                            family_ids = cur.fetchone()
+                            if family_ids:
+                                family_ids = json.loads(family_ids[0])
+                                for family_id in family_ids:
+                                    cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
+                                    trip_ids = cur.fetchone()
+                                    if trip_ids:
+                                        trip_ids = json.loads(trip_ids[0])
+                                        trip_ids.remove(trip_id)
+                                        cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
+                            cur.execute('DELETE FROM trips WHERE trip_id=? AND admin_family_id=?', (trip_id, admin_family_id[0]))
 
-                        # --- NEW: Cleanup Logic ---
-                        # 1. Find all families attending this trip before deleting it.
-                        cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (trip_id,))
-                        row = cur.fetchone()
-                        if not row or not row[0]:
-                            ui.notification('Trip not found or has no attendees.', color='red')
-                            # Still attempt to delete just in case it's an orphaned trip.
-                            cur.execute('DELETE FROM trips WHERE trip_id=?', (trip_id,))
                             con.commit()
-                            ui.timer(0.1, ui.navigate.reload, once=True)
-                            return
-                        
-                        attending_family_ids = json.loads(row[0])
 
-                        # 2. For each attending family, remove this trip_id from their list.
-                        for family_id_to_update in attending_family_ids:
-                            cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id_to_update,))
-                            family_trips_row = cur.fetchone()
-                            if family_trips_row and family_trips_row[0]:
-                                family_trip_list = json.loads(family_trips_row[0])
-                                # Remove the trip if it exists in their list
-                                if trip_id in family_trip_list:
-                                    family_trip_list.remove(trip_id)
-                                    cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', 
-                                                (json.dumps(family_trip_list), family_id_to_update))
-                        
-                        # 3. Now it's safe to delete the trip itself.
-                        cur.execute('DELETE FROM trips WHERE trip_id=?', (trip_id,))
-                        
-                        con.commit()
-                        ui.notification('Trip ended and all records cleaned up.', color='green')
-                        ui.timer(0.1, ui.navigate.reload, once=True)
+                            ui.notification('Trip stopped and finished.', color='green')
+                            ui.navigate.reload()
+                        else:
+                            ui.notification('Trip not found.', color='red')
                 async def on_leave_trip_click(trip_id):
                     ui.notification('Leaving trip...')
                     with sqlite3.connect(DATABASE_PATH) as con:
@@ -1208,40 +1197,31 @@ async def trip_drive_page(request: Request, item_path: str):
     async def stop_and_finish_trip():
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
-            
-            # --- NEW: Cleanup Logic ---
-            # 1. Find all families attending this trip before deleting it.
-            cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (item_path,))
-            row = cur.fetchone()
-            if not row or not row[0]:
-                ui.notification('Trip not found or has no attendees.', color='red')
-                # Still attempt to delete just in case it's an orphaned trip.
-                cur.execute('DELETE FROM trips WHERE trip_id=?', (item_path,))
+            # get admin_family_id from trips table
+            cur.execute('SELECT admin_family_id FROM trips WHERE trip_id=?', (item_path,))
+            admin_family_id = cur.fetchone()
+            if admin_family_id:  # Make sure it's not None
+                cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (item_path,))
+                family_ids = cur.fetchone()
+                if family_ids:
+                    family_ids = json.loads(family_ids[0])
+                    for family_id in family_ids:
+                        cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
+                        trip_ids = cur.fetchone()
+                        if trip_ids:
+                            trip_ids = json.loads(trip_ids[0])
+                            trip_ids.remove(item_path)
+                            cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
+                cur.execute('DELETE FROM trips WHERE trip_id=? AND admin_family_id=?', (item_path, admin_family_id[0]))
+
                 con.commit()
-                ui.navigate.to('/trips')
-                return
 
-            attending_family_ids = json.loads(row[0])
-
-            # 2. For each attending family, remove this trip_id from their list.
-            for family_id_to_update in attending_family_ids:
-                cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id_to_update,))
-                family_trips_row = cur.fetchone()
-                if family_trips_row and family_trips_row[0]:
-                    family_trip_list = json.loads(family_trips_row[0])
-                    # Remove the trip if it exists in their list
-                    if item_path in family_trip_list:
-                        family_trip_list.remove(item_path)
-                        cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', 
-                                    (json.dumps(family_trip_list), family_id_to_update))
-
-            # 3. Now it's safe to delete the trip itself.
-            cur.execute('DELETE FROM trips WHERE trip_id=?', (item_path,))
-
-            con.commit()
-
-            ui.notification('Trip stopped and finished. All records cleaned up.', color='green')
-            ui.navigate.to('/trips')
+                ui.notification('Trip stopped and finished.', color='green')
+                ui.navigate.reload()
+            else:
+                ui.notification('Trip not found.', color='red')
+    
+    ui.button('Stop and Finish Trip', on_click=stop_and_finish_trip).props('primary color="red"').classes('w-full')
 
 @ui.page('/family')
 async def family_page(request: Request):
@@ -1302,71 +1282,32 @@ async def family_page(request: Request):
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
             
-            # 1. Get the family_id to delete.
+            # 1. Get the family_id of the current user's family
             cur.execute('SELECT family_id FROM users WHERE user_id=?', (user_id,))
             family_id_tuple = cur.fetchone()
+            
             if not family_id_tuple or not family_id_tuple[0]:
-                ui.notification('You are not in a family.', color='red')
+                ui.notification('You\'re not in a family.', color='green')
                 return
+            
             family_id_to_delete = family_id_tuple[0]
-
-            # 2. Get all trip_ids this family is involved in (both as admin and attendee).
+    
+            # 2. Get all trip_ids associated with this family BEFORE deleting the family
+            # We need this to potentially clean up trips where this family was an attendee
             cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id_to_delete,))
             trip_ids_row = cur.fetchone()
-            involved_trip_ids = json.loads(trip_ids_row[0]) if trip_ids_row and trip_ids_row[0] else []
+            family_trip_ids = json.loads(trip_ids_row[0]) if trip_ids_row and trip_ids_row[0] else []
+            if family_trip_ids == []:
+                # 3. Delete the family record itself
+                cur.execute('DELETE FROM families WHERE family_id=?', (family_id_to_delete,))
 
-            # 3. Iterate through all involved trips to perform cleanup BEFORE deletion.
-            for trip_id in involved_trip_ids:
-                cur.execute("SELECT admin_family_id, family_ids FROM trips WHERE trip_id=?", (trip_id,))
-                trip_info = cur.fetchone()
-                
-                # If trip was already deleted by another process, or doesn't exist, skip.
-                if not trip_info:
-                    continue
-
-                admin_id, attendees_json = trip_info
-                attendees = json.loads(attendees_json)
-
-                # --- Case A: The family being deleted OWNS this trip. ---
-                # This trip will be deleted entirely, so we must remove its ID from ALL other attending families.
-                if admin_id == family_id_to_delete:
-                    for other_family_id in attendees:
-                        # Skip the family we are currently processing for deletion.
-                        if other_family_id == family_id_to_delete:
-                            continue
-                        
-                        # Fetch, modify, and update the other family's list of trip_ids.
-                        cur.execute("SELECT trip_ids FROM families WHERE family_id=?", (other_family_id,))
-                        other_family_trips_row = cur.fetchone()
-                        if other_family_trips_row and other_family_trips_row[0]:
-                            other_family_trip_list = json.loads(other_family_trips_row[0])
-                            if trip_id in other_family_trip_list:
-                                other_family_trip_list.remove(trip_id)
-                                cur.execute("UPDATE families SET trip_ids=? WHERE family_id=?", 
-                                            (json.dumps(other_family_trip_list), other_family_id))
-
-                # --- Case B: The family being deleted is just ATTENDING this trip. ---
-                # The trip is not being deleted, so we just remove this family from the trip's attendee list.
-                else:
-                    if family_id_to_delete in attendees:
-                        attendees.remove(family_id_to_delete)
-                        cur.execute("UPDATE trips SET family_ids=? WHERE trip_id=?", 
-                                    (json.dumps(attendees), trip_id))
-            
-            # 4. Now that all relationships are cleaned up, perform the main deletions.
-            
-            # Delete all trips owned by the family.
-            cur.execute('DELETE FROM trips WHERE admin_family_id=?', (family_id_to_delete,))
-            
-            # Delete the family record itself.
-            cur.execute('DELETE FROM families WHERE family_id=?', (family_id_to_delete,))
-            
-            # Unlink all users from the now-deleted family.
-            cur.execute('UPDATE users SET family_id=? WHERE family_id=?', ('', family_id_to_delete))
-
-            con.commit()
-            ui.notification('Family deleted successfully. All trip associations have been cleaned up.', color='green')
-            ui.timer(0.1, ui.navigate.reload, once=True)
+                # 4. Update all users whose family_id matches the deleted family_id
+                cur.execute('UPDATE users SET family_id=? WHERE family_id=?', ('', family_id_to_delete))
+                con.commit()
+                ui.notification('Family deleted successfully.', color='green')
+                ui.timer(0.1, ui.navigate.reload, once=True)
+            else:
+                ui.notification('Please leave all trips before deleting the family.', color='red')
     
     async def join_family():
         with sqlite3.connect(DATABASE_PATH) as con:
