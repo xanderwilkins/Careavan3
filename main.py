@@ -84,7 +84,6 @@ with sqlite3.connect(DATABASE_PATH) as con:
             family_id TEXT PRIMARY KEY,
             admin_user_id TEXT NOT NULL,
             adult_ids TEXT NOT NULL,
-            child_ids TEXT NOT NULL,
             trip_ids TEXT NOT NULL,
             traits TEXT NOT NULL -- JSON list of traits for the family
         )
@@ -763,13 +762,17 @@ async def trips_page(request: Request):
                         if not row:
                             ui.notification('Trip not found.', color='red')
                             return
-                        
                         family_ids = json.loads(row[0])
                         if family_id not in family_ids:
                             ui.notification('Your family is not attending this trip.', color='red')
                             return
                         family_ids.remove(family_id)
                         cur.execute('UPDATE trips SET family_ids=? WHERE trip_id=?', (json.dumps(family_ids), trip_id))
+                        cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
+                        row = cur.fetchone()
+                        trip_ids = json.loads(row[0])
+                        trip_ids.remove(trip_id)
+                        cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
                         con.commit()
                         ui.notification('Left trip successfully!', color='green')
                         ui.timer(0.1, ui.navigate.reload, once=True)
@@ -1232,7 +1235,7 @@ async def family_page(request: Request):
             with sqlite3.connect(DATABASE_PATH) as con_inner:
                 cur_inner = con_inner.cursor()
                 family_id_new = str(uuid4())
-                cur_inner.execute('INSERT INTO families (family_id, admin_user_id, adult_ids, trip_ids, traits) VALUES (?, ?, ?, ?, ?, ?)',
+                cur_inner.execute('INSERT INTO families (family_id, admin_user_id, adult_ids, trip_ids, traits) VALUES (?, ?, ?, ?, ?)',
                             (family_id_new, user_id, json.dumps([user_id]), json.dumps([]), json.dumps([])))
                 cur_inner.execute('UPDATE users SET family_id=? WHERE user_id=?',
                             (family_id_new, user_id))
@@ -1244,17 +1247,49 @@ async def family_page(request: Request):
         if not await is_admin():
             ui.notification('You are not the admin of this family.', color='red')
             return
+        
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
+            
+            # 1. Get the family_id of the current user's family
             cur.execute('SELECT family_id FROM users WHERE user_id=?', (user_id,))
             family_id_tuple = cur.fetchone()
+            
             if not family_id_tuple or not family_id_tuple[0]:
                 ui.notification('You\'re not in a family.', color='green')
                 return
+            
             family_id_to_delete = family_id_tuple[0]
+    
+            # 2. Get all trip_ids associated with this family BEFORE deleting the family
+            # We need this to potentially clean up trips where this family was an attendee
+            cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id_to_delete,))
+            trip_ids_row = cur.fetchone()
+            family_trip_ids = json.loads(trip_ids_row[0]) if trip_ids_row and trip_ids_row[0] else []
+    
+            # 3. Delete the family record itself
             cur.execute('DELETE FROM families WHERE family_id=?', (family_id_to_delete,))
+            
+            # 4. Update all users whose family_id matches the deleted family_id
             cur.execute('UPDATE users SET family_id=? WHERE family_id=?', ('', family_id_to_delete))
+    
+            # 5. Clean up trips:
+            #    a. Delete trips *owned* by the family being deleted
             cur.execute('DELETE FROM trips WHERE admin_family_id=?', (family_id_to_delete,))
+            
+            #    b. For any other trips (not owned by this family) where this family was an attendee,
+            #       remove this family's ID from their 'family_ids' list.
+            #       Iterate through the trips this family was attending.
+            for trip_id in family_trip_ids:
+                cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (trip_id,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    attending_family_ids = json.loads(row[0])
+                    if family_id_to_delete in attending_family_ids:
+                        attending_family_ids.remove(family_id_to_delete)
+                        cur.execute('UPDATE trips SET family_ids=? WHERE trip_id=?',
+                                    (json.dumps(attending_family_ids), trip_id))
+    
             con.commit()
             ui.notification('Family deleted successfully.', color='green')
             ui.timer(0.1, ui.navigate.reload, once=True)
