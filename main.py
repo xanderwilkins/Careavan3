@@ -36,7 +36,11 @@ DATABASE_PATH = 'careavan.db'
 #    }
 #}
 
-TRAITS = ['Sports', 'Music', 'Art', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking', 'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking', 'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation']
+#TRAITS = ['Sports', 'Music', 'Art', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking', 'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking', 'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation']
+TRAITS = sorted(list(set([
+    'Sports', 'Music', 'Art', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking',
+    'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation'
+])))
 
 LOCATIONS = {
     "3425 Bee Caves Rd, Austin, TX 78746": [
@@ -630,10 +634,7 @@ async def trips_page(request: Request):
             ui.label('You are not in a family.').classes('text-2xl font-bold mb-6 text-center text-indigo')
             return
 
-    image_base64_string = None
-
     async def create_trip():
-        nonlocal image_base64_string
         
         if not visibility_input.value:
             ui.notification('Visibility is required.', color='green')
