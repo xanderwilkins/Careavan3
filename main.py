@@ -416,7 +416,8 @@ async def discover_page(request: Request):
     
     if not await verify_session(session_id):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
-        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
+        ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
         return
     
     # --- NEW: Fetch Family Traits for Default Selection ---
@@ -503,7 +504,8 @@ async def trip_edit_page(request: Request, item_path: str):
 
     if not await verify_session(session_id):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
-        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
+        ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
         return
 
     user_id = await retrieve_user_id_from_session_id(session_id)
@@ -612,7 +614,8 @@ async def trips_page(request: Request):
 
     if not await verify_session(session_id):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
-        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
+        ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
         return
 
     user_id = await retrieve_user_id_from_session_id(session_id)
@@ -1231,7 +1234,8 @@ async def family_page(request: Request):
 
     if not await verify_session(session_id):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
-        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
+        ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
         return
 
     user_id = await retrieve_user_id_from_session_id(session_id)
@@ -1539,7 +1543,8 @@ async def settings_page(request: Request):
 
     if not await verify_session(session_id):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
-        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full bg-indigo text-white py-2 rounded-lg')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
+        ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
         return
 
     user_id = await retrieve_user_id_from_session_id(session_id)
