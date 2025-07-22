@@ -449,7 +449,7 @@ async def discover_page(request: Request):
                     default_traits = [] # Fallback to empty if JSON is invalid
 
     # Session is valid, continue with page content
-    ui.label('Discover Destinations).classes('text-2xl font-bold mb-6 text-center text-indigo')
+    ui.label('Discover Destinations').classes('text-2xl font-bold mb-6 text-center text-indigo')
     ui.label('Find public trips and destinations. We\'ve pre-selected your family\'s common traits!')
 
     # This function will clear and rebuild the list of location cards.
