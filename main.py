@@ -42,7 +42,7 @@ TRAITS = sorted(list(set([
     'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation'
 ])))
 
-LOCATIONS = {
+DESTINATIONS = {
     "3425 Bee Caves Rd, Austin, TX 78746": [
         "Master Martial Arts at Westlake Hills",
         "https://images1.loopnet.com/i2/k4skNKBK8J7L6A2siQe2NtnzEVW1bvWJ9a2c0oz0tBs/110/3425-Bee-Caves-Rd-Austin-TX-Primary-Photo-1-Large.jpg",
@@ -60,6 +60,19 @@ LOCATIONS = {
     ]
 }
 
+ui.add_head_html('''
+    <!-- Enable standalone mode on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- Control status bar appearance -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- App name when added to home screen -->
+    <meta name="apple-mobile-web-app-title" content="Careavan">
+
+    <!-- iOS home screen icon (make sure this path is valid) -->
+    <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/apple/419/automobile_1f697.png">
+''')
 
 with sqlite3.connect(DATABASE_PATH) as con:
     cur = con.cursor()
@@ -459,7 +472,7 @@ async def discover_page(request: Request):
         locations_found = 0
 
         with location_container:
-            for address, (name, image, categories) in LOCATIONS.items():
+            for address, (name, image, categories) in DESTINATIONS.items():
                 if not selected_traits or any(trait in categories for trait in selected_traits):
                     locations_found += 1
                     with ui.card().tight().classes('w-full max-w-xl mx-auto'):
@@ -847,7 +860,7 @@ async def trips_page(request: Request):
                     #        ui.button('End', on_click=lambda tid=trip_id: on_end_trip_click(tid), color='red').classes('mb-1')
                     #        ui.button('Leave', on_click=lambda tid=trip_id: on_leave_trip_click(tid), color='orange')
                     with ui.item().classes('relative overflow-hidden max-h-40'):
-                        ui.image(LOCATIONS[destination][1]) \
+                        ui.image(DESTINATIONS[destination][1]) \
                             .classes('absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none select-none')
                         #else:
                         #    ui.label('No image available').classes('absolute inset-0 flex items-center justify-center text-gray-500 opacity-50 w-full h-full')
@@ -882,7 +895,7 @@ async def trips_page(request: Request):
             ui.label("Create a new trip on behalf of your family.")
             ui.label("Please enter the exact street address of the location for destination.")
 
-            destination_input = ui.select(options=list(LOCATIONS.keys()), with_input=True,
+            destination_input = ui.select(options=list(DESTINATIONS.keys()), with_input=True,
                 on_change=lambda e: ui.notify(e.value)).classes('w-full')
             
             with ui.input('Date').classes('w-full') as date_input:
