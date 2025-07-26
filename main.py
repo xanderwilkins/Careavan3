@@ -1627,7 +1627,7 @@ async def family_page(request: Request):
 
                 photo_upload_input = ui.upload(on_upload=handle_image_upload,
                                                 on_rejected=lambda: ui.notify('Rejected! File too large or wrong type.'),
-                                                max_file_size=1_000_000, # 1 MB
+                                                max_file_size=3_000_000, # 3 MB
                                                 max_files=1,
                                                 auto_upload=True,
                                                 label='Click or drag image here').props('accept=image/*').classes('max-w-full')
