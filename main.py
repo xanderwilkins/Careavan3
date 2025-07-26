@@ -102,7 +102,10 @@ with sqlite3.connect(DATABASE_PATH) as con:
             admin_user_id TEXT NOT NULL,
             adult_ids TEXT NOT NULL,
             trip_ids TEXT NOT NULL,
-            traits TEXT NOT NULL -- JSON list of traits for the family
+            traits TEXT NOT NULL, -- JSON list of traits for the family
+            name TEXT NOT NULL,
+            photo TEXT NOT NULL, -- Base64 encoded image
+            description TEXT NOT NULL
         )
     ''')
     cur.execute('''
@@ -573,15 +576,14 @@ async def trip_edit_page(request: Request, item_path: str):
                 with sqlite3.connect(DATABASE_PATH) as con:
                     cur = con.cursor()
                     #cur.execute("SELECT last_name FROM users WHERE user_id=?", (admin_family_id,))
-                    cur.execute("SELECT last_name FROM users WHERE user_id=(SELECT admin_user_id FROM families WHERE family_id=?)", (admin_family_id,))
-                    admin_name = cur.fetchone()
-                    if admin_name:
-                        last_name = admin_name[0]
-                    else:
-                        admin_name = "Unknown"
-                        last_name = "Unkown"
+                    cur.execute("SELECT name, photo FROM families WHERE family_id=?", (admin_family_id,))
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        name = row[0]
+                        photo = row[1]
                 with ui.item().classes('relative overflow-hidden max-h-40 flex justify-between items-center'):
-                    ui.label(f"Public trip by the {last_name} family. • Starts at: {date} / {time}").classes('text-left')  # left aligned by default, explicit here
+                    ui.image('data:image/jpeg;base64,' + photo).classes('mt-2 w-16 h-16 sm:w-32 sm:h-32 rounded-full object-cover')
+                    ui.label(f"Public trip by {name} • Starts at: {date} / {time}").classes('text-left')  # left aligned by default, explicit here
                     ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='indigo')
             #for row in rows:
             #    trip_id, admin_family_id, family_ids, status, visibility, location, destination, date, time = row
@@ -1281,11 +1283,15 @@ async def family_page(request: Request):
                 ui.notification('You\'re already in a family.', color='green')
                 return
             
+            cur.execute('SELECT last_name FROM users WHERE user_id=?', (user_id,))
+            last_name = cur.fetchone()
+            last_name = last_name[0] if last_name else "Unknown"
+
             with sqlite3.connect(DATABASE_PATH) as con_inner:
                 cur_inner = con_inner.cursor()
                 family_id_new = str(uuid4())
-                cur_inner.execute('INSERT INTO families (family_id, admin_user_id, adult_ids, trip_ids, traits) VALUES (?, ?, ?, ?, ?)',
-                            (family_id_new, user_id, json.dumps([user_id]), json.dumps([]), json.dumps([])))
+                cur_inner.execute('INSERT INTO families (family_id, admin_user_id, adult_ids, trip_ids, traits, name, photo, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                            (family_id_new, user_id, json.dumps([user_id]), json.dumps([]), json.dumps([]), ('The ' + last_name + ' Family'), '', ''))
                 cur_inner.execute('UPDATE users SET family_id=? WHERE user_id=?',
                             (family_id_new, user_id))
                 con_inner.commit()
@@ -1487,6 +1493,7 @@ async def family_page(request: Request):
         with ui.tabs().classes('w-full') as tabs:
             family_dashboard = ui.tab('Dashboard', icon='dashboard')
             common_traits = ui.tab('Common Traits', icon='menu')
+            family_info = ui.tab('Family Info', icon='info')
         with ui.tab_panels(tabs, value=family_dashboard).classes('w-full'):
             with ui.tab_panel(family_dashboard):
                 if await is_admin():
@@ -1547,6 +1554,101 @@ async def family_page(request: Request):
                         ui.button("Reset", on_click=ui.navigate.reload, color='indigo').props('flat')
                         ui.button("Save Changes", on_click=save_traits, color='indigo')
                     ui.label('Because of the way NiceGUI works, the easiest way to make a reset button with ui.select is to reload the page.')
+            with ui.tab_panel(family_info):       
+                name_input = ui.input('Family Name', value='').props('outlined clearable').classes('w-full mb-3')
+                description_input = ui.input('Family Description', value='').props('outlined clearable').classes('w-full mb-3')
+                
+                ui.label('Upload a new family photo (max 1MB, JPEG recommended):').classes('text-sm mb-2')
+                
+                async def save_family_info():
+                    if not name_input.value:
+                        ui.notification('Family Name is required.', color='red')
+                        return
+                    
+                    with sqlite3.connect(DATABASE_PATH) as con:
+                        cur = con.cursor()
+                        
+                        cur.execute('UPDATE families SET name=?, description=? WHERE family_id=?',
+                                    (name_input.value, description_input.value if description_input.value else '', family_id))
+                        con.commit()
+                        ui.notification('Family information updated successfully!', color='green')
+                        #ui.timer(0.1, ui.navigate.reload, once=True) # Reload to show new image
+
+                ui.button('Save Info', on_click=save_family_info, color='indigo').classes('w-full mt-4')
+
+                # To reset only the family info fields
+                async def reset_family_info_fields():
+                    # Re-fetch the current values from the DB to reset
+                    with sqlite3.connect(DATABASE_PATH) as con_inner:
+                        cur = con_inner.cursor()
+                        cur.execute('SELECT name, description FROM families WHERE family_id=?', (family_id,))
+                        reset_row = cur.fetchone()
+                        if reset_row:
+                            name_input.value = reset_row[0]
+                            description_input.value = reset_row[1]
+                    ui.notification('Family info fields reset.', color='green')
+
+                await reset_family_info_fields()  # Initial call to set the fields
+
+                ui.button('Reset Fields', on_click=reset_family_info_fields, color='indigo').props('flat').classes('w-full mt-2')
+
+                ui.separator()
+                ui.separator()
+                ui.separator()
+
+                ui.label('Current Family Photo:').classes('text-sm mb-2')
+                
+                # Re-fetch the current values from the DB to reset
+                with sqlite3.connect(DATABASE_PATH) as con_inner:
+                    cur = con_inner.cursor()
+                    cur.execute('SELECT photo FROM families WHERE family_id=?', (family_id,))
+                    reset_row = cur.fetchone()
+                    if reset_row:
+                        ui.image('data:image/jpeg;base64,' + reset_row[0]).classes('mt-2 w-32 h-32 object-cover')
+                ui.notification('Family photo reset.', color='green')
+
+                image_base64_string = ''
+                
+                async def handle_image_upload(e: events.UploadEventArguments):
+                    ui.notification('Image upload started...', color='green')
+
+                    global image_base64_string
+                    # Read the uploaded file as bytes
+                    file_bytes = e.content.read()
+                    # Convert to JPEG using Pillow
+                    image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+                    buffer = io.BytesIO()
+                    image.save(buffer, format="JPEG", quality=85)
+                    jpeg_bytes = buffer.getvalue()
+                    image_base64_string = base64.b64encode(jpeg_bytes).decode('utf-8')
+                    ui.notification('Image uploaded successfully!', color='green')
+
+                ui.label('New Family Photo Input:').classes('text-sm mb-2')
+
+                photo_upload_input = ui.upload(on_upload=handle_image_upload,
+                                                on_rejected=lambda: ui.notify('Rejected! File too large or wrong type.'),
+                                                max_file_size=1_000_000, # 1 MB
+                                                max_files=1,
+                                                auto_upload=True,
+                                                label='Click or drag image here').props('accept=image/*').classes('max-w-full')
+                
+                async def save_photo():
+                    global image_base64_string
+                    with sqlite3.connect(DATABASE_PATH) as con:
+                        cur = con.cursor()
+
+                        if image_base64_string == '':
+                            ui.notification('No image selected.', color='red')
+                            return
+
+                        cur.execute('UPDATE families SET photo=? WHERE family_id=?',
+                                    (image_base64_string, family_id))
+                        con.commit()
+                        ui.notification('Family information updated successfully!', color='green')
+                        ui.timer(0.1, ui.navigate.reload, once=True) # Reload to show new image
+                
+                ui.button('Save Photo', on_click=save_photo, color='indigo').classes('w-full mt-4')
+                ui.button('Reset Photo', on_click=ui.navigate.reload, color='indigo').props('flat').classes('w-full mt-2')
 
 
 @ui.page('/settings')
