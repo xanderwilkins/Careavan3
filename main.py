@@ -197,7 +197,7 @@ async def delete_session(request: Request):
 async def verify_session(session_id: str) -> bool:
     if not session_id:
         return False
-    
+
     with sqlite3.connect(DATABASE_PATH) as con:
         cur = con.cursor()
         cur.execute('SELECT expires_at FROM sessions WHERE session_id=?', (session_id,))
@@ -231,7 +231,7 @@ async def register_page(request: Request):
         ui.label('There\'s no need to register. You are already logged in.').classes('text-2xl font-bold mb-6 text-center text-primary')
         ui.button('Go to trips', on_click=lambda: ui.navigate.to('/trips')).classes('w-full')
         return
-    
+
     ui.label('Register').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
     email_input = ui.input('Email').props('type=email outlined clearable').classes('w-full mb-3')
@@ -244,11 +244,11 @@ async def register_page(request: Request):
         if not all([f.value for f in [email_input, password_input, first_name_input, last_name_input]]):
             ui.notification('All fields are required.', color='green')
             return
-        
+
         if len(password_input.value) < 6:
             ui.notification('Password must be at least 6 characters.', color='green')
             return
-        
+
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
             ui.notification('Working on it...', color='green')
@@ -259,7 +259,7 @@ async def register_page(request: Request):
                 return
             user_id = str(uuid4())
             now_iso = datetime.now(timezone.utc).isoformat()
-            
+
             cur.execute('''INSERT INTO users (user_id, family_id, email, password, first_name, last_name, points, established_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
                         (user_id, '', email_input.value, bcrypt.hashpw(password_input.value.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'), first_name_input.value, last_name_input.value, 0, now_iso))
@@ -267,7 +267,7 @@ async def register_page(request: Request):
             ui.notification('Registration successful! Creating session...', color='green')
 
             ui.navigate.to('/_create_session?user_id=' + user_id)
-    
+
     ui.button('Register', on_click=on_register_click, color='indigo').classes('w-full')
     ui.button('Already have an account? Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').props('flat dense').classes('w-full')
 
@@ -279,7 +279,7 @@ async def login_page(request: Request):
         ui.label('There\'s no need to login. You are already logged in.').classes('text-2xl font-bold mb-6 text-center text-primary')
         ui.button('Go to trips', on_click=lambda: ui.navigate.to('/trips')).classes('w-full')
         return
-    
+
     ui.label('Login').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
     email_input = ui.input('Email').props('type=email outlined clearable').classes('w-full mb-3')
@@ -289,7 +289,7 @@ async def login_page(request: Request):
         if not all([f.value for f in [email_input, password_input]]):
             ui.notification('All fields are required.', color='red')
             return
-        
+
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
 
@@ -305,7 +305,7 @@ async def login_page(request: Request):
                 ui.notification('Logged in successfully.', color='green')
             else:
                 ui.notification('Invalid email or password.', color='red')
-    
+
     ui.button('Login', on_click=on_login_click, color='indigo').classes('w-full')
     ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
 
@@ -314,12 +314,12 @@ async def login_page(request: Request):
 #    _app_footer()
 #
 #    session_id = request.cookies.get(SESSION_COOKIE)
-#    
+#
 #    if not await verify_session(session_id):
 #        ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
 #        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
 #        return
-#    
+#
 #    user_id = await retrieve_user_id_from_session_id(session_id)
 #
 #    with sqlite3.connect(DATABASE_PATH) as con:
@@ -342,7 +342,7 @@ async def login_page(request: Request):
 #    #        ui.label('Lorem ipsum dolor sit amet, consectetur adipiscing elit, ...')
 #    #        ui.label('Trips under this location: 3').classes('w-full text-indigo')
 #    #        ui.button('View Location', color='indigo').classes('w-full')
-#    
+#
 #    #with ui.list().props('dense separator').classes('w-full'):
 #    #    for address, name in LOCATIONS.items():
 #    #        ui.item(f"Name: {name}  Address: {address}")#.classes('w-full')
@@ -366,12 +366,12 @@ async def login_page(request: Request):
 #    _app_footer()
 #
 #    session_id = request.cookies.get(SESSION_COOKIE)
-#    
+#
 #    if not await verify_session(session_id):
 #        ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
 #        ui.button('Login', on_click=lambda: ui.navigate.to('/login')).classes('w-full')
 #        return
-#    
+#
 #    # Session is valid, continue with page content
 #    ui.label('Discover Trips').classes('text-2xl font-bold mb-6 text-center text-indigo')
 #    ui.label('Find public trips and locations based on your family\'s interests.')
@@ -383,7 +383,7 @@ async def login_page(request: Request):
 #
 #        # Get the currently selected traits and normalize to lowercase.
 #        selected_traits = [trait.lower() for trait in trait_selector.value or []]
-#        
+#
 #        locations_found = 0
 #
 #        # Step 2: Re-populate the container with the filtered cards.
@@ -399,14 +399,14 @@ async def login_page(request: Request):
 #                        with ui.card_section():
 #                            ui.label(name).classes('text-lg font-bold')
 #                            ui.label(address).classes('text-sm text-gray-600')
-#                            
+#
 #                            with ui.row().classes('mt-2'):
 #                                for category in categories:
 #                                    ui.chip(category.capitalize(), color='indigo', text_color='white').props('dense size=sm')
 #
 #                            ui.label('Trips at this location: 3').classes('w-full text-indigo pt-2') # Placeholder
 #                            ui.button('View Location', color='indigo').classes('w-full mt-2')
-#            
+#
 #            if locations_found == 0:
 #                ui.label('No locations match your selected traits.').classes('text-center text-gray-500 p-4')
 #
@@ -414,9 +414,9 @@ async def login_page(request: Request):
 #
 #    # Define the selector. When it changes, it will call our update function.
 #    trait_selector = ui.select(
-#        TRAITS, 
-#        multiple=True, 
-#        value=[], 
+#        TRAITS,
+#        multiple=True,
+#        value=[],
 #        label='Filter by Traits',
 #        on_change=update_location_list  # This is the crucial link
 #    ).classes('w-full').props('use-chips clearable')
@@ -433,13 +433,13 @@ async def discover_page(request: Request):
     _app_footer()
 
     session_id = request.cookies.get(SESSION_COOKIE)
-    
+
     if not await verify_session(session_id):
         ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
         ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
         ui.button('Don\'t have an account? Register', on_click=lambda: ui.navigate.to('/register')).props('flat dense').classes('w-full mt-3 text-indigo')
         return
-    
+
     # --- NEW: Fetch Family Traits for Default Selection ---
     default_traits = []  # Start with an empty list as a safe default
     user_id = await retrieve_user_id_from_session_id(session_id)
@@ -484,7 +484,7 @@ async def discover_page(request: Request):
                         with ui.card_section().classes('w-full'):
                             ui.label(name).classes('text-lg font-bold')
                             ui.label(address).classes('text-sm text-gray-600')
-                            
+
                             with ui.row().classes('mt-2'):
                                 for category in categories:
                                     ui.chip(category.capitalize(), color='indigo', text_color='white').props('dense size=sm')
@@ -492,7 +492,7 @@ async def discover_page(request: Request):
                             #ui.label('Trips at this location: 3').classes('w-full text-indigo pt-2')
                             ui.button('View Destination', on_click=lambda current_address=address: ui.navigate.to('/discover/' + current_address), color='indigo').classes('w-full mt-2')
                             ui.button('Copy Destination Address', on_click=lambda current_address=address: ui.clipboard.write(current_address), color='indigo').classes('w-full mt-2')
-            
+
             if locations_found == 0:
                 ui.label('No locations match your selected traits.').classes('text-center text-gray-500 p-4')
 
@@ -500,8 +500,8 @@ async def discover_page(request: Request):
 
     # MODIFIED: The `value` parameter is now set to `default_traits`
     trait_selector = ui.select(
-        TRAITS, 
-        multiple=True, 
+        TRAITS,
+        multiple=True,
         value=default_traits,  # This pre-selects the traits from the database
         label='Filter by Traits',
         on_change=update_location_list
@@ -650,15 +650,15 @@ async def trips_page(request: Request):
             return
 
     async def create_trip():
-        
+
         if not visibility_input.value:
             ui.notification('Visibility is required.', color='green')
             return
-        
+
         if not date_input.value:
             ui.notification('Date is required.', color='green')
             return
-        
+
         if not time_input.value:
             ui.notification('Time is required.', color='green')
             return
@@ -681,7 +681,7 @@ async def trips_page(request: Request):
             con.commit()
             ui.notification('Trip created successfully!', color='green')
             ui.navigate.reload()
-    
+
     async def join_trip():
         # Validation: Check if trip_id_input is present and valid
         trip_id = trip_id_input.value.strip() if trip_id_input.value else ''
@@ -752,7 +752,7 @@ async def trips_page(request: Request):
             ui.label('These are trips your family is attending.')
             ui.label('You are a parent. You can create and join trips on behalf of your family.')
             ui.button('Refresh', on_click=ui.navigate.reload, color='indigo').classes('w-full')
-            
+
             with ui.list().props('bordered separator').classes('w-full mt-4 mx-0 px-0 rounded-lg'):
                 ui.item_label('Attending Trips').props('header').classes('text-bold')
                 ui.separator()
@@ -763,7 +763,7 @@ async def trips_page(request: Request):
                         con.commit()
                         ui.notification('Starting trip...', color='green')
                         ui.navigate.to('/trips/drive/' + str(trip_id))
-                
+
                 async def on_end_trip_click(trip_id):
                     with sqlite3.connect(DATABASE_PATH) as con:
                         cur = con.cursor()
@@ -899,7 +899,7 @@ async def trips_page(request: Request):
 
             destination_input = ui.select(options=list(DESTINATIONS.keys()), with_input=True,
                 on_change=lambda e: ui.notify(e.value)).classes('w-full')
-            
+
             with ui.input('Date').classes('w-full') as date_input:
                 with ui.menu().props('no-parent-event') as menu:
                     with ui.date().props(''':options="date => { const today = new Date(new Date().setHours(0, 0, 0, 0)); const limit = new Date(today); limit.setDate(today.getDate() + 7); return new Date(date) >= today && new Date(date) < limit; }"''').bind_value(date_input):
@@ -907,7 +907,7 @@ async def trips_page(request: Request):
                             ui.button('Close', on_click=menu.close).props('flat')
                 with date_input.add_slot('append'):
                     ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
-                        
+
             with ui.input('Time').classes('w-full') as time_input:
                 with ui.menu().props('no-parent-event') as menu:
                     with ui.time().bind_value(time_input):
@@ -925,7 +925,7 @@ async def trips_page(request: Request):
             #        child_ids = []
             #ui.select(names, multiple=True, value=names[:2], label='comma-separated') \
             #child_ids = ['John', 'Jane', 'Jim', 'Jill']
-            
+
             visibility_input = ui.select(['Public', 'Private'], label='Visibility').props('outlined').classes('w-full mb-3')
             ui.button('Create Trip', on_click=create_trip, color='indigo').classes('w-full')
         with ui.tab_panel(join):
@@ -1001,7 +1001,7 @@ async def trip_view_page(request: Request, item_path: str):
                     ui.notification('Failed to update location')
             else:
                 current_location_label.set_text('The current location is: Unknown')
-    
+
     with sqlite3.connect(DATABASE_PATH) as con:
         cur = con.cursor()
         cur.execute('SELECT destination, date, time, visibility FROM trips WHERE trip_id=?', (item_path,))
@@ -1038,7 +1038,7 @@ async def trip_edit_page(request: Request, item_path: str):
                     ui.button('Close', on_click=menu.close).props('flat')
         with time.add_slot('append'):
             ui.icon('access_time').on('click', menu.open).classes('cursor-pointer')
-    
+
     visibility_input = ui.select(['Public', 'Private'], label='Visibility').props('outlined').classes('w-full mb-3')  # Dropdown for selecting visibility of the trip.
 
     #child_ids_input = ui.select(child_ids, multiple=True, value=[], label='Select which of your children are attending this trip') \
@@ -1056,7 +1056,7 @@ async def trip_edit_page(request: Request, item_path: str):
                     date.value = row[1]
                     time.value = row[2]
                     visibility_input.value = row[3].capitalize()
-                    
+
                     ui.notification('Trip loaded successfully.', color='green')
                 else:
                     ui.notification('Trip not found.', color='red')
@@ -1082,7 +1082,7 @@ async def trip_edit_page(request: Request, item_path: str):
                 ui.notification('Trip updated successfully.', color='green')
         except Exception as e:
             ui.notification(f'Failed to update trip: {str(e)}', color='red')
-    
+
     with ui.row().classes('justify-end gap-x-2 mt-4'):
         #ui.button("Reset", on_click=reset_general_fields).props('flat')
         #ui.button("Save Changes", on_click=update_general_fields, color='primary')
@@ -1092,7 +1092,7 @@ async def trip_edit_page(request: Request, item_path: str):
 @ui.page('/trips/drive/{item_path:path}')
 async def trip_drive_page(request: Request, item_path: str):
     session_id = request.cookies.get(SESSION_COOKIE)
-    
+
     status_label = ui.label('').classes('text-sm mb-2')
 
     with sqlite3.connect(DATABASE_PATH) as con:
@@ -1104,7 +1104,7 @@ async def trip_drive_page(request: Request, item_path: str):
         if not row or not row[0]:
             ui.notification('You are not in a family.', color='red')
             return
-        
+
         family_id = row[0]
         cur.execute('SELECT adult_ids FROM families WHERE family_id=?', (family_id,))
         row = cur.fetchone()
@@ -1112,23 +1112,23 @@ async def trip_drive_page(request: Request, item_path: str):
         if not row:
             ui.notification('Family not found.', color='red')
             return
-        
+
         adult_ids = json.loads(row[0])
 
         if current_user_id not in adult_ids:
             ui.notification('You are not authorized to drive this trip.', color='red')
             return
-        
+
         cur.execute('SELECT trip_id FROM trips WHERE trip_id=? AND admin_family_id=?', (item_path, family_id))
         row = cur.fetchone()
 
         if not row or not row[0]:
             ui.notification('This trip is not owned by your family.', color='red')
             return
-        
+
         cur.execute('SELECT status FROM trips WHERE trip_id=?', (item_path,))
         row = cur.fetchone()
-        
+
         if row[0] != True:
             ui.notification('This trip is not active.', color='red')
             return
@@ -1175,7 +1175,7 @@ async def trip_drive_page(request: Request, item_path: str):
                     ui.notification('Failed to update location')
             else:
                 current_location_label.set_text('The current location is: Unknown')
-    
+
     await update_location()  # Initial call to set the location immediately
     ui.timer(1.0, update_location, once=False)
 
@@ -1212,7 +1212,7 @@ async def trip_drive_page(request: Request, item_path: str):
 
     # Start auto-tracking location if possible
     ui.timer(5.0, send_location_to_db, once=False)
-    
+
     async def stop_and_finish_trip():
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
@@ -1239,7 +1239,7 @@ async def trip_drive_page(request: Request, item_path: str):
                 ui.navigate.to('/trips')
             else:
                 ui.notification('Trip not found.', color='red')
-    
+
     ui.button('Stop and Finish Trip', on_click=stop_and_finish_trip).props('primary color="red"').classes('w-full')
 
 @ui.page('/family')
@@ -1263,13 +1263,13 @@ async def family_page(request: Request):
             family_id_tuple = cur.fetchone()
             if not family_id_tuple or not family_id_tuple[0]:
                 return False
-            
+
             family_id_str = family_id_tuple[0]
             cur.execute('SELECT admin_user_id FROM families WHERE family_id=?', (family_id_str,))
             admin_id_tuple = cur.fetchone()
             if not admin_id_tuple:
                 return False
-            
+
             admin_id = admin_id_tuple[0]
             return admin_id == user_id
 
@@ -1282,7 +1282,7 @@ async def family_page(request: Request):
             if family_id and family_id[0]:
                 ui.notification('You\'re already in a family.', color='green')
                 return
-            
+
             cur.execute('SELECT last_name FROM users WHERE user_id=?', (user_id,))
             last_name = cur.fetchone()
             last_name = last_name[0] if last_name else "Unknown"
@@ -1302,20 +1302,20 @@ async def family_page(request: Request):
         if not await is_admin():
             ui.notification('You are not the admin of this family.', color='red')
             return
-        
+
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
-            
+
             # 1. Get the family_id of the current user's family
             cur.execute('SELECT family_id FROM users WHERE user_id=?', (user_id,))
             family_id_tuple = cur.fetchone()
-            
+
             if not family_id_tuple or not family_id_tuple[0]:
                 ui.notification('You\'re not in a family.', color='green')
                 return
-            
+
             family_id_to_delete = family_id_tuple[0]
-    
+
             # 2. Get all trip_ids associated with this family BEFORE deleting the family
             # We need this to potentially clean up trips where this family was an attendee
             cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id_to_delete,))
@@ -1332,7 +1332,7 @@ async def family_page(request: Request):
                 ui.timer(0.1, ui.navigate.reload, once=True)
             else:
                 ui.notification('Please leave all trips before deleting the family.', color='red')
-    
+
     async def join_family():
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
@@ -1362,19 +1362,19 @@ async def family_page(request: Request):
             con.commit()
             ui.notification('You have joined the family successfully!', color='green')
             ui.timer(0.1, ui.navigate.reload, once=True)
-    
+
     async def leave_family():
         with sqlite3.connect(DATABASE_PATH) as con:
             user_id = await retrieve_user_id_from_session_id(session_id)
             cur = con.cursor()
             cur.execute('SELECT family_id FROM users WHERE user_id=?', (user_id,))
-            family_id_tuple = cur.fetchone() 
+            family_id_tuple = cur.fetchone()
             if not family_id_tuple or not family_id_tuple[0]:
                 ui.notification('You are not in a family.', color='red')
                 return
-            current_family_id = family_id_tuple[0] 
+            current_family_id = family_id_tuple[0]
             cur.execute('SELECT admin_user_id FROM families WHERE family_id=?', (current_family_id,))
-            admin_id_tuple = cur.fetchone() 
+            admin_id_tuple = cur.fetchone()
             if admin_id_tuple and admin_id_tuple[0] == user_id:
                 ui.notification('You are the admin of the family. You cannot leave. Transfer admin rights or delete the family.', color='red')
                 return
@@ -1390,7 +1390,7 @@ async def family_page(request: Request):
             con.commit()
             ui.notification('You have left the family successfully!', color='green')
             ui.timer(0.1, ui.navigate.reload, once=True)
-    
+
     async def remove_member(user_to_delete_id: str):
         ui.notification('Removal in progress...', color='green')
         current_logged_in_user_id = await retrieve_user_id_from_session_id(session_id)
@@ -1488,7 +1488,7 @@ async def family_page(request: Request):
         return
     else:
         family_id = family_id_tuple[0]
-        
+
         ui.label(f'Family Management').classes('text-2xl font-bold mb-6 text-center text-indigo')
         with ui.tabs().classes('w-full') as tabs:
             family_dashboard = ui.tab('Dashboard', icon='dashboard')
@@ -1505,7 +1505,7 @@ async def family_page(request: Request):
                     cur = con.cursor()
                     cur.execute('SELECT admin_user_id, adult_ids FROM families WHERE family_id=?', (family_id,))
                     family_info_row = cur.fetchone()
-                
+
                 if family_info_row:
                     admin_user_id = family_info_row[0]
                     adult_ids = json.loads(family_info_row[1])
@@ -1549,25 +1549,26 @@ async def family_page(request: Request):
                     names = ['Sports', 'Music', 'Art', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking', 'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation', 'Reading', 'Writing', 'Cooking', 'Gardening', 'Hiking', 'Camping', 'Fishing', 'Swimming', 'Biking', 'Walking', 'Yoga', 'Meditation']
                     traits_input = ui.select(names, multiple=True, value=traits, label='Select Family Traits') \
                         .classes('w-full')
-                    
+
                     with ui.row():
                         ui.button("Reset", on_click=ui.navigate.reload, color='indigo').props('flat')
                         ui.button("Save Changes", on_click=save_traits, color='indigo')
                     ui.label('Because of the way NiceGUI works, the easiest way to make a reset button with ui.select is to reload the page.')
-            with ui.tab_panel(family_info):       
+            with ui.tab_panel(family_info):
                 name_input = ui.input('Family Name', value='').props('outlined clearable').classes('w-full mb-3')
-                description_input = ui.input('Family Description', value='').props('outlined clearable').classes('w-full mb-3')
-                
+                #description_input = ui.input('Family Description', value='').props('outlined clearable').classes('w-full mb-3')
+                description_input = ui.textarea(label='Family Description').classes('w-full')
+
                 ui.label('Upload a new family photo (max 1MB, JPEG recommended):').classes('text-sm mb-2')
-                
+
                 async def save_family_info():
                     if not name_input.value:
                         ui.notification('Family Name is required.', color='red')
                         return
-                    
+
                     with sqlite3.connect(DATABASE_PATH) as con:
                         cur = con.cursor()
-                        
+
                         cur.execute('UPDATE families SET name=?, description=? WHERE family_id=?',
                                     (name_input.value, description_input.value if description_input.value else '', family_id))
                         con.commit()
@@ -1597,7 +1598,7 @@ async def family_page(request: Request):
                 ui.separator()
 
                 ui.label('Current Family Photo:').classes('text-sm mb-2')
-                
+
                 # Re-fetch the current values from the DB to reset
                 with sqlite3.connect(DATABASE_PATH) as con_inner:
                     cur = con_inner.cursor()
@@ -1608,7 +1609,7 @@ async def family_page(request: Request):
                 ui.notification('Family photo reset.', color='green')
 
                 image_base64_string = ''
-                
+
                 async def handle_image_upload(e: events.UploadEventArguments):
                     ui.notification('Image upload started...', color='green')
 
@@ -1631,7 +1632,7 @@ async def family_page(request: Request):
                                                 max_files=1,
                                                 auto_upload=True,
                                                 label='Click or drag image here').props('accept=image/*').classes('max-w-full')
-                
+
                 async def save_photo():
                     global image_base64_string
                     with sqlite3.connect(DATABASE_PATH) as con:
@@ -1646,7 +1647,7 @@ async def family_page(request: Request):
                         con.commit()
                         ui.notification('Family information updated successfully!', color='green')
                         ui.timer(0.1, ui.navigate.reload, once=True) # Reload to show new image
-                
+
                 ui.button('Save Photo', on_click=save_photo, color='indigo').classes('w-full mt-4')
                 ui.button('Reset Photo', on_click=ui.navigate.reload, color='indigo').props('flat').classes('w-full mt-2')
 
@@ -1714,11 +1715,11 @@ async def settings_page(request: Request):
                                 (first_name_input.value, last_name_input.value, user_id))
                     con.commit()
                     ui.notification('Updated Successfully!', color='green')
-            
+
             with ui.row():
                 ui.button("Reset", on_click=load_general_fields, color='indigo').props('flat')
                 ui.button("Save Changes", on_click=save_general_fields, color='indigo')
-        
+
         with ui.tab_panel(security_tab):
             old_password_input = ui.input('Old Password', password=True, password_toggle_button=True).props('outlined clearable').classes('w-full mb-3')
             new_password_input = ui.input('New Password', password=True, password_toggle_button=True).props('outlined clearable').classes('w-full mb-3')
@@ -1730,7 +1731,7 @@ async def settings_page(request: Request):
                 confirm_new_password_input.value = ''
 
                 ui.notification('Fields reset.', color='green')
-            
+
             await load_security_fields()
 
             async def save_security_fields():
@@ -1743,7 +1744,7 @@ async def settings_page(request: Request):
                 if len(new_password_input.value) < 6:
                     ui.notification('New password must be at least 6 characters.', color='red')
                     return
-                
+
                 with sqlite3.connect(DATABASE_PATH) as con:
                     cur = con.cursor()
                     cur.execute('SELECT password FROM users WHERE user_id=?', (user_id,))
@@ -1751,7 +1752,7 @@ async def settings_page(request: Request):
                     if not result or not bcrypt.checkpw(old_password_input.value.encode('utf-8'), result[0].encode('utf-8')):
                         ui.notification('Old password is incorrect.', color='red')
                         return
-                    
+
                     hashed_new_password = bcrypt.hashpw(new_password_input.value.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     cur.execute('UPDATE users SET password=? WHERE user_id=?', (hashed_new_password, user_id))
                     con.commit()
