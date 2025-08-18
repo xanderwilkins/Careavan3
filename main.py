@@ -490,7 +490,7 @@ async def discover_page(request: Request):
                                     ui.chip(category.capitalize(), color='indigo', text_color='white').props('dense size=sm')
 
                             #ui.label('Trips at this location: 3').classes('w-full text-indigo pt-2')
-                            ui.button('View Destination', on_click=lambda current_address=address: ui.navigate.to('/discover/' + current_address), color='indigo').classes('w-full mt-2')
+                            ui.button('View Destination', on_click=lambda current_address=address: ui.navigate.to('/discover/destination/' + current_address), color='indigo').classes('w-full mt-2')
                             ui.button('Copy Destination Address', on_click=lambda current_address=address: ui.clipboard.write(current_address), color='indigo').classes('w-full mt-2')
 
             if locations_found == 0:
@@ -516,7 +516,7 @@ async def discover_page(request: Request):
     # It will automatically use the pre-selected traits.
     update_location_list()
 
-@ui.page('/discover/{item_path:path}')
+@ui.page('/discover/destination/{item_path:path}')
 async def trip_edit_page(request: Request, item_path: str):
     _app_footer()
 
@@ -582,9 +582,11 @@ async def trip_edit_page(request: Request, item_path: str):
                         name = row[0]
                         photo = row[1]
                 with ui.item().classes('relative overflow-hidden max-h-40 flex justify-between items-center'):
-                    ui.image('data:image/jpeg;base64,' + photo).classes('mt-2 w-16 h-16 sm:w-32 sm:h-32 rounded-full object-cover')
+                    ui.image('data:image/jpeg;base64,' + photo).classes('mt-2 w-24 h-16 sm:w-32 sm:h-32 rounded-full object-cover')
                     ui.label(f"Public trip by {name} • Starts at: {date} / {time}").classes('text-left')  # left aligned by default, explicit here
-                    ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='indigo')
+                    with ui.column().classes('items-end'):
+                        ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='indigo')
+                        ui.button('Family Info', on_click=lambda current_family=admin_family_id: ui.navigate.to('/discover/family/' + str(current_family)), color='white')
             #for row in rows:
             #    trip_id, admin_family_id, family_ids, status, visibility, location, destination, date, time = row
             #    trip_ids.append(trip_id)
@@ -623,7 +625,46 @@ async def trip_edit_page(request: Request, item_path: str):
         #        ui.image(LOCATIONS[destination][1]) \
         #            .classes('absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none select-none')
 
+@ui.page('/discover/family/{item_path:path}')
+async def family_info_page(request: Request, item_path: str):
+    _app_footer()
 
+    session_id = request.cookies.get(SESSION_COOKIE)
+
+    if not await verify_session(session_id):
+        ui.label('You need to login first.').classes('text-2xl font-bold mb-6 text-center text-indigo')
+        ui.button('Login', on_click=lambda: ui.navigate.to('/login'), color='indigo').classes('w-full')
+        return
+    
+    user_id = await retrieve_user_id_from_session_id(session_id)
+
+    with sqlite3.connect(DATABASE_PATH) as con:
+        cur = con.cursor()
+        cur.execute('SELECT adult_ids, trip_ids, name, photo, description FROM families WHERE family_id=?', (item_path,))
+        family_data = cur.fetchone()
+        if not family_data:
+            ui.label('Family not found.').classes('text-2xl font-bold mb-6 text-center text-indigo')
+            return
+        adult_ids, trip_ids, name, photo, description = family_data
+        adult_ids = json.loads(adult_ids) if adult_ids else []
+        trip_ids = json.loads(trip_ids) if trip_ids else []
+
+    with ui.header(elevated=True).classes('bg-indigo'):
+        with ui.row().classes('items-center w-full'):
+            ui.button(
+                icon='arrow_back',
+                on_click=lambda: ui.run_javascript('history.back()')
+            ).props('flat round color="white"').classes('mr-2')
+            ui.label(f'Family ID: {item_path}').classes('text-lg')
+    ui.button('Copy Family ID', on_click=lambda current_address=item_path: ui.clipboard.write(current_address), color='indigo').classes('w-full mt-2')
+    ui.item_label('Family Information:').props('header').classes('text-bold')
+    ui.separator()
+    ui.item_label(f'Name: {name}')
+    ui.item_label(f'Description: {description}')
+    ui.item_label(f'Photo:')
+    ui.image('data:image/jpeg;base64,' + photo).classes('mt-2 w-32 h-32 sm:w-64 sm:h-64 rounded-full object-cover')
+    #ui.item_label(f'Adult IDs: {", ".join(adult_ids)}')
+    #ui.item_label(f'Trip IDs: {", ".join(trip_ids)}')
 
 @ui.page('/trips')
 async def trips_page(request: Request):
