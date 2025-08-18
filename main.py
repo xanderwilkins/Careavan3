@@ -538,6 +538,9 @@ async def trip_edit_page(request: Request, item_path: str):
             ).props('flat round color="white"').classes('mr-2')
             ui.label(f'Destination Address: {item_path}').classes('text-lg')
     ui.button('Copy Destination Address', on_click=lambda current_address=item_path: ui.clipboard.write(current_address), color='indigo').classes('w-full mt-2')
+    destination_image = DESTINATIONS.get(item_path, [None, None])[1]
+    ui.label('Destination Image:').props('header').classes('text-bold')
+    ui.image(destination_image).classes('mt-2 w-64 object-cover')
     with ui.list().props('bordered separator').classes('w-full mt-4 mx-0 px-0 rounded-lg'):
         ui.item_label('Public trips under this destination:').props('header').classes('text-bold')
         ui.separator()
