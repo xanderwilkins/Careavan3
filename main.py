@@ -1331,7 +1331,10 @@ async def trip_drive_page(request: Request, item_path: str):
             'attribution': '<a href="http://example.com">Careavan</a>™ 💜'
         },
     )
-    location_marker = leaflet_map.marker(latlng=(51.505, -0.09), options={'attributionControl': True})
+    location_marker = leaflet_map.marker(
+        latlng=(51.505, -0.09),
+        options={'attributionControl': True, 'draggable': True}
+    )
     current_location_label = ui.label('The current location is:').classes('text-sm mb-2')
 
     # Poll the trip's location from the DB and update the map for all viewers
@@ -1344,7 +1347,9 @@ async def trip_drive_page(request: Request, item_path: str):
                 try:
                     lat_str, lon_str = [s.strip() for s in row[0].split(',')]
                     lat, lon = float(lat_str), float(lon_str)
-                    location_marker.latlng = (lat, lon)
+                    #location_marker.latlng = (lat, lon)
+                    location_marker.move(lat, lon)
+
                     leaflet_map.center = (lat, lon)
                     current_location_label.set_text(f'The current location is: {lat:.5f}, {lon:.5f}')
                 except Exception as e:
