@@ -15,6 +15,8 @@ import io
 SESSION_COOKIE = 'careavan_session'
 DATABASE_PATH = 'careavan.db'
 
+CAREAVAN_LOGO = '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'
+
 #oLOCATIONS = {
 #    "3425 Bee Caves Rd, Austin, TX 78746": "Master Martial Arts at Westlake Hills",
 #    "8100 Bee Caves Rd, Austin, TX 78746": "Jett Garner Martial Arts",
@@ -151,6 +153,7 @@ with sqlite3.connect(DATABASE_PATH) as con:
 def _app_footer():
     with ui.footer(elevated=True).classes('bg-indigo-700 print-hide p-2'):
         with ui.row().classes('mx-auto items-center justify-center gap-x-2'):
+            ui.image('data:image/jpeg;base64,'+ CAREAVAN_LOGO).classes('w-8 h-8')
             with ui.column().classes('items-center gap-y-1'):
                 ui.button('', icon='search', on_click=lambda: ui.navigate.to('/discover')).props('flat text-color="white"')
                 ui.label('Discover').classes('text-white text-xs m-0 p-0')
@@ -231,6 +234,7 @@ async def register_page(request: Request):
         ui.label('There\'s no need to register. You are already logged in.').classes('text-2xl font-bold mb-6 text-center text-primary')
         ui.button('Go to trips', on_click=lambda: ui.navigate.to('/trips')).classes('w-full')
         return
+    ui.image('data:image/jpeg;base64,'+ CAREAVAN_LOGO).classes('w-48 h-48')
 
     ui.label('Register').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
@@ -279,6 +283,8 @@ async def login_page(request: Request):
         ui.label('There\'s no need to login. You are already logged in.').classes('text-2xl font-bold mb-6 text-center text-primary')
         ui.button('Go to trips', on_click=lambda: ui.navigate.to('/trips')).classes('w-full')
         return
+
+    ui.image('data:image/jpeg;base64,'+ CAREAVAN_LOGO).classes('w-48 h-48')
 
     ui.label('Login').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
@@ -530,6 +536,12 @@ async def trip_edit_page(request: Request, item_path: str):
 
     user_id = await retrieve_user_id_from_session_id(session_id)
 
+    with sqlite3.connect(DATABASE_PATH) as con:
+        cur = con.cursor()
+        cur.execute('SELECT family_id FROM users WHERE user_id=?', (user_id,))
+        row = cur.fetchone()
+        family_id = row[0] if row else None
+
     with ui.header(elevated=True).classes('bg-indigo'):
         with ui.row().classes('items-center w-full'):
             ui.button(
@@ -544,6 +556,64 @@ async def trip_edit_page(request: Request, item_path: str):
     with ui.list().props('bordered separator').classes('w-full mt-4 mx-0 px-0 rounded-lg'):
         ui.item_label('Public trips under this destination:').props('header').classes('text-bold')
         ui.separator()
+
+        async def join_trip(trip_id):
+            # Validation: Check if trip_id_input is present and valid
+            if not trip_id:
+                ui.notification('Trip ID is required.', color='green')
+                return
+            if len(trip_id) < 3:
+                ui.notification('Trip ID must be at least 3 characters.', color='green')
+                return
+
+            with sqlite3.connect(DATABASE_PATH) as con:
+                ui.notification('Joining a trip...', color='green')
+                cur = con.cursor()
+                # Only select adult_ids, since admin_id is already known or can be checked separately
+                cur.execute('SELECT adult_ids FROM families WHERE family_id=?', (family_id,))
+                row = cur.fetchone()
+                is_parent = False
+                if row:
+                    adult_ids = json.loads(row[0])
+                    # Check if user is admin or in adult_ids
+                    cur.execute('SELECT admin_user_id FROM families WHERE family_id=?', (family_id,))
+                    admin_id_row = cur.fetchone()
+                    admin_id = admin_id_row[0] if admin_id_row else None
+                    if user_id == admin_id or user_id in adult_ids:
+                        is_parent = True
+                if not is_parent:
+                    ui.notification('You are not a parent in this family.', color='red')
+                    return
+
+                # Check if trip exists
+                cur.execute('SELECT family_ids FROM trips WHERE trip_id=?', (trip_id,))
+                row = cur.fetchone()
+                if not row:
+                    ui.notification('Trip not found.', color='red')
+                    return
+                family_ids = json.loads(row[0])
+                if family_id in family_ids:
+                    ui.notification('Your family is already attending this trip.', color='orange')
+                    return
+
+                # All checks passed, join the trip
+                family_ids.append(family_id)
+                cur.execute('UPDATE trips SET family_ids=? WHERE trip_id=?', (json.dumps(family_ids), trip_id))
+
+                # Also add the trip to the family's trip_ids if not already present
+                cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    trip_ids = json.loads(row[0])
+                else:
+                    trip_ids = []
+                if trip_id not in trip_ids:
+                    trip_ids.append(trip_id)
+                    cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
+
+                con.commit()
+                ui.notification('Trip joined successfully!', color='green')
+                ui.timer(0.1, ui.navigate.reload, once=True)
 
         with sqlite3.connect(DATABASE_PATH) as con:
             cur = con.cursor()
@@ -588,8 +658,9 @@ async def trip_edit_page(request: Request, item_path: str):
                     ui.image('data:image/jpeg;base64,' + photo).classes('mt-2 w-24 h-16 sm:w-32 sm:h-32 rounded-full object-cover')
                     ui.label(f"Public trip by {name} • Starts at: {date} / {time}").classes('text-left')  # left aligned by default, explicit here
                     with ui.column().classes('items-end'):
-                        ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='indigo')
+                        ui.button('Join Trip', on_click=lambda current_id=trip_id: join_trip(current_id), color='indigo')
                         ui.button('Family Info', on_click=lambda current_family=admin_family_id: ui.navigate.to('/discover/family/' + str(current_family)), color='white')
+                        #ui.button('Copy Trip ID', on_click=lambda current_id=trip_id: ui.clipboard.write(current_id), color='white')
             #for row in rows:
             #    trip_id, admin_family_id, family_ids, status, visibility, location, destination, date, time = row
             #    trip_ids.append(trip_id)
@@ -935,6 +1006,7 @@ async def trips_page(request: Request):
                                         ui.chip('Start', icon='flag', on_click=lambda e, tid=trip_id: on_start_trip_click(tid)).props('flat color="green-400" size=sm')
                                         ui.chip('Delete', icon='dangerous', on_click=lambda tid=trip_id: on_end_trip_click(tid)).props('flat color="red-400" size=sm')
                                 else:
+                                    ui.chip('Give Location', icon='location_searching ', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="purple-200" size=sm')
                                     ui.chip('Leave Trip', icon='exit_to_app', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="red-200" size=sm')
                         #ui.separator()
         with ui.tab_panel(create):
@@ -1603,7 +1675,7 @@ async def family_page(request: Request):
                 #description_input = ui.input('Family Description', value='').props('outlined clearable').classes('w-full mb-3')
                 description_input = ui.textarea(label='Family Description').classes('w-full')
 
-                ui.label('Upload a new family photo (max 1MB, JPEG recommended):').classes('text-sm mb-2')
+                ui.label('Upload a new family photo:').classes('text-sm mb-2')
 
                 async def save_family_info():
                     if not name_input.value:
