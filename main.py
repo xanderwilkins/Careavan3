@@ -120,7 +120,8 @@ with sqlite3.connect(DATABASE_PATH) as con:
             location TEXT NOT NULL, -- Current location of the trip
             destination TEXT NOT NULL,
             date TEXT NOT NULL,
-            time TEXT NOT NULL
+            time TEXT NOT NULL,
+            attendee_locations TEXT NOT NULL
         )
     ''')
 
@@ -782,8 +783,8 @@ async def trips_page(request: Request):
             cur = con.cursor()
             new_trip_id = str(uuid4())
             cur.execute(
-                'INSERT INTO trips (trip_id, admin_family_id, family_ids, status, visibility, location, destination, date, time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (new_trip_id, family_id, json.dumps([family_id]), False, visibility_input.value.lower(), '', destination_input.value, date_input.value, time_input.value)
+                'INSERT INTO trips (trip_id, admin_family_id, family_ids, status, visibility, location, destination, date, time, attendee_locations) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (new_trip_id, family_id, json.dumps([family_id]), False, visibility_input.value.lower(), '', destination_input.value, date_input.value, time_input.value, json.dumps({}))
             )
             cur.execute('SELECT trip_ids FROM families WHERE family_id=?', (family_id,))
             row = cur.fetchone()
@@ -855,6 +856,56 @@ async def trips_page(request: Request):
             con.commit()
             ui.notification('Trip joined successfully!', color='green')
             ui.timer(0.1, ui.navigate.reload, once=True)
+    
+    async def update_attendee_location(family_id, trip_id):
+        ui.notification('Updating your location for the trip...', color='green')
+        with sqlite3.connect(DATABASE_PATH) as con:
+            cur = con.cursor()
+            cur.execute('SELECT location FROM trips WHERE trip_id=?', (trip_id,))
+            row = cur.fetchone()
+            if row:
+                location = row[0]
+                cur.execute('SELECT attendee_locations FROM trips WHERE trip_id=?', (trip_id,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    attendee_locations = json.loads(row[0])
+                else:
+                    attendee_locations = {}
+
+                # get current user location
+                response = await ui.run_javascript('''
+                    return await new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) {
+                            reject(new Error('Geolocation is not supported by your browser'));
+                        } else {
+                            navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                    resolve({
+                                        latitude: position.coords.latitude,
+                                        longitude: position.coords.longitude,
+                                    });
+                                },
+                                () => {
+                                    reject(new Error('Unable to retrieve your location'));
+                                }
+                            );
+                        }
+                    });
+                ''', timeout=5.0)
+                lat, lon = response["latitude"], response["longitude"]
+
+                # Update or insert the location for this family
+                attendee_locations[str(family_id)] = f"{lat},{lon}"
+
+                # Save back to DB
+                cur.execute(
+                    'UPDATE trips SET attendee_locations=? WHERE trip_id=?',
+                    (json.dumps(attendee_locations), trip_id)
+                )
+                con.commit()
+                ui.notification('You\'ve successfully provided your location for the trip.', color='green')
+
+
 
     ui.label('Trips').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
@@ -925,6 +976,16 @@ async def trips_page(request: Request):
                         trip_ids = json.loads(row[0])
                         trip_ids.remove(trip_id)
                         cur.execute('UPDATE families SET trip_ids=? WHERE family_id=?', (json.dumps(trip_ids), family_id))
+
+                        # Remove the family's location from attendee_locations
+                        cur.execute('SELECT attendee_locations FROM trips WHERE trip_id=?', (trip_id,))
+                        row = cur.fetchone()
+                        if row and row[0]:
+                            attendee_locations = json.loads(row[0])
+                            if str(family_id) in attendee_locations:
+                                del attendee_locations[str(family_id)]
+                                cur.execute('UPDATE trips SET attendee_locations=? WHERE trip_id=?', (json.dumps(attendee_locations), trip_id))
+
                         con.commit()
                         ui.notification('Left trip successfully!', color='green')
                         ui.timer(0.1, ui.navigate.reload, once=True)
@@ -1006,7 +1067,7 @@ async def trips_page(request: Request):
                                         ui.chip('Start', icon='flag', on_click=lambda e, tid=trip_id: on_start_trip_click(tid)).props('flat color="green-400" size=sm')
                                         ui.chip('Delete', icon='dangerous', on_click=lambda tid=trip_id: on_end_trip_click(tid)).props('flat color="red-400" size=sm')
                                 else:
-                                    ui.chip('Give Location', icon='location_searching ', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="purple-200" size=sm')
+                                    ui.chip('Give Location', icon='location_searching ', on_click=lambda: update_attendee_location(family_id, trip_id)).props('flat color="purple-200" size=sm')
                                     ui.chip('Leave Trip', icon='exit_to_app', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="red-200" size=sm')
                         #ui.separator()
         with ui.tab_panel(create):
