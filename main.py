@@ -503,6 +503,8 @@ async def discover_page(request: Request):
             if locations_found == 0:
                 ui.label('No locations match your selected traits.').classes('text-center text-gray-500 p-4')
 
+            ui.button('📝 Request To Add A New Destination', on_click=lambda: ui.navigate.to('https://google.com', new_tab=True), color='white').classes('primary w-full mt-2')
+
     # --- UI Element Definitions ---
 
     # MODIFIED: The `value` parameter is now set to `default_traits`
@@ -1037,38 +1039,73 @@ async def trips_page(request: Request):
                     #        ui.button('Start', on_click=lambda tid=trip_id: on_start_trip_click(tid), color='green').classes('mb-1')
                     #        ui.button('End', on_click=lambda tid=trip_id: on_end_trip_click(tid), color='red').classes('mb-1')
                     #        ui.button('Leave', on_click=lambda tid=trip_id: on_leave_trip_click(tid), color='orange')
-                    with ui.item().classes('relative overflow-hidden max-h-40'):
+                    
+                    #with ui.item().classes('relative overflow-hidden max-h-40'):
+                    with ui.item().classes('relative w-full max-w-full min-w-0'):
                         ui.image(DESTINATIONS[destination][1]) \
                             .classes('absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none select-none')
+                            #.classes('absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none select-none')
                         #else:
                         #    ui.label('No image available').classes('absolute inset-0 flex items-center justify-center text-gray-500 opacity-50 w-full h-full')
-                        with ui.row().classes('relative z-10 p-0 w-full items-center justify-between'):
+                        #with ui.row().classes('relative z-10 p-0 w-full items-center justify-between'):
+                        with ui.row().classes('relative z-10 p-0 w-full items-center justify-between flex-nowrap min-w-0'):
                             #with ui.row().classes('items-center gap-0'):
                             #    with ui.item_section().props('avatar'):
                             #        ui.icon('directions_car')
                             #with ui.column().classes('items-center gap-0'):
-                            with ui.column().classes('items-center gap-0 flex-shrink max-w-[150px] sm:max-w-[200px]'):
+                            #with ui.column().classes('items-center gap-0 flex-shrink max-w-[150px] sm:max-w-[200px]'):
+                            with ui.column().classes('items-center gap-0 flex-shrink min-w-0 max-w-[150px] sm:max-w-[200px]'):
                                 ui.item_label(destination).classes('text-xs')
                                 ui.item_label(f'{date} • {time}').props('caption')
                                 #ui.item_label(f'{description}').props('caption')
                                 if family_id == admin_family_id:
-                                    ui.item_label('Made by your family.').props('caption')
+                                    ui.item_label('Made by your family.').classes('text-xs')
                                 else:
-                                    ui.item_label('Your family is attending.').props('caption')
-                            with ui.column().classes('items-end gap-1'):
+                                    ui.item_label('Your family is attending.').classes('text-xs')
+
+                            with ui.dialog() as dialog, ui.card():
+                                ui.label('Are you sure?')
+                                with ui.row():
+                                    ui.button('Yes', on_click=lambda: dialog.submit('Yes'), color='green')
+                                    ui.button('No', on_click=lambda: dialog.submit('No'), color='red')
+
+                            #with ui.column().classes('items-end gap-1'):
+                            with ui.column().classes('items-end gap-1 flex-shrink min-w-0'):
                                 ui.item_label('Active' if status == 1 else 'Inactive').props('caption').classes('text-black')
                                 ui.chip('View', icon='article', on_click=lambda tid=trip_id: ui.navigate.to(f'/trips/view/{tid}')).props('flat color="blue-200" size=sm')
                                 if family_id == admin_family_id:
                                     ui.chip('Edit', icon='edit', on_click=lambda tid=trip_id: ui.navigate.to(f'/trips/edit/{tid}')).props('flat color="orange-200" size=sm')
+                                    
+                                    async def start_trip_confirm(tid):
+                                        result = await dialog
+                                        if result == 'Yes': await on_start_trip_click(tid)
+                                        else: ui.notify(f'Cancelled.')
+
+                                    async def end_trip_confirm(tid):
+                                        result = await dialog
+                                        if result == 'Yes': await on_end_trip_click(tid)
+                                        else: ui.notify(f'Cancelled.', position='bottom-right')
+
                                     if status == 1:
                                         ui.chip('Driver Dashboard', icon='directions_car', on_click=lambda tid=trip_id: ui.navigate.to(f'/trips/drive/{tid}')).props('flat color="green-400" size=sm')
-                                        ui.chip('Stop and Delete', icon='dangerous', on_click=lambda tid=trip_id: on_end_trip_click(tid)).props('flat color="red-400" size=sm')
+                                        ui.chip('Stop and Delete', icon='dangerous', on_click=lambda tid=trip_id: end_trip_confirm(tid)).props('flat color="red-400" size=sm')
                                     else:
-                                        ui.chip('Start', icon='flag', on_click=lambda e, tid=trip_id: on_start_trip_click(tid)).props('flat color="green-400" size=sm')
-                                        ui.chip('Delete', icon='dangerous', on_click=lambda tid=trip_id: on_end_trip_click(tid)).props('flat color="red-400" size=sm')
+                                        ui.chip('Start', icon='flag', on_click=lambda e, tid=trip_id: start_trip_confirm(tid)).props('flat color="green-400" size=sm')
+                                        ui.chip('Delete', icon='dangerous', on_click=lambda tid=trip_id: end_trip_confirm(tid)).props('flat color="red-400" size=sm')
                                 else:
-                                    ui.chip('Give Location', icon='location_searching ', on_click=lambda: update_attendee_location(family_id, trip_id)).props('flat color="purple-200" size=sm')
-                                    ui.chip('Leave Trip', icon='exit_to_app', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="red-200" size=sm')
+                                    async def give_location_confirm(family_id, trip_id):
+                                        result = await dialog
+                                        if result == 'Yes': await update_attendee_location(family_id, trip_id)
+                                        else: ui.notify(f'Cancelled. Location not given.')
+
+                                    ui.chip('Give Location', icon='location_searching ', on_click=lambda: give_location_confirm(family_id, trip_id)).props('flat color="purple-200" size=sm')
+
+                                    async def leave_trip_confirm(tid):
+                                        result = await dialog
+                                        if result == 'Yes': await on_leave_trip_click(tid)
+                                        else: ui.notify(f'Cancelled. You\'re still in the trip.')
+                                    #ui.chip('Leave Trip', icon='exit_to_app', on_click=lambda tid=trip_id: on_leave_trip_click(tid)).props('flat color="red-200" size=sm')
+                                    ui.chip('Leave Trip', icon='exit_to_app', on_click=lambda tid=trip_id: leave_trip_confirm(tid)).props('flat color="red-200" size=sm')
                         #ui.separator()
         with ui.tab_panel(create):
             ui.label("Create a new trip on behalf of your family.")
@@ -1167,7 +1204,8 @@ async def trip_view_page(request: Request, item_path: str):
 
                     lat, lon = float(lat_str), float(lon_str)
 
-                    location_marker.latlng = (lat, lon)
+                    #location_marker.latlng = (lat, lon)
+                    location_marker.move(lat, lon)
 
                     leaflet_map.center = (lat, lon)
 
@@ -1331,10 +1369,23 @@ async def trip_drive_page(request: Request, item_path: str):
             'attribution': '<a href="http://example.com">Careavan</a>™ 💜'
         },
     )
+
+    EMOJI = "🚌"
+
     location_marker = leaflet_map.marker(
         latlng=(51.505, -0.09),
         options={'attributionControl': True, 'draggable': True}
+        #options={
+        #    "icon": {
+        #        "__type__": "L.DivIcon",
+        #        "html": f'<div style="font-size: 2.5rem; line-height: 1;">{emoji}</div>',
+        #        "className": "",
+        #        "iconSize": [40, 40],
+        #        "iconAnchor": [20, 40],
+        #    }
+        #}
     )
+    
     current_location_label = ui.label('The current location is:').classes('text-sm mb-2')
 
     # Poll the trip's location from the DB and update the map for all viewers
@@ -1422,7 +1473,18 @@ async def trip_drive_page(request: Request, item_path: str):
             else:
                 ui.notification('Trip not found.', color='red')
 
-    ui.button('Stop and Finish Trip', on_click=stop_and_finish_trip).props('primary color="red"').classes('w-full')
+    with ui.dialog() as dialog, ui.card():
+        ui.label('Are you sure?')
+        with ui.row():
+            ui.button('Yes', on_click=lambda: dialog.submit('Yes'), color='green')
+            ui.button('No', on_click=lambda: dialog.submit('No'), color='red')
+
+    async def end_trip_confirm():
+        result = await dialog
+        if result == 'Yes': await stop_and_finish_trip()
+        else: ui.notify(f'Cancelled.', position='bottom-right')
+
+    ui.button('Stop and Finish Trip', on_click=end_trip_confirm).props('primary color="red"').classes('w-full')
 
 @ui.page('/family')
 async def family_page(request: Request):
@@ -1711,7 +1773,16 @@ async def family_page(request: Request):
                                                 ui.chip('Transfer Admin', icon='dangerous', on_click=lambda mid=member_user_data[0]: transfer_admin(mid)).props('flat dense color="warning" size=sm')
                                                 ui.chip('Remove', icon='dangerous', on_click=lambda mid=member_user_data[0]: remove_member(mid)).props('flat dense color="red" size=sm')
                 if await is_admin():
-                    ui.button('Delete Family', on_click=delete_family, color='red').classes('w-full')
+                    with ui.dialog() as dialog, ui.card():
+                        ui.label('Are you sure?')
+                        with ui.row():
+                            ui.button('Yes', on_click=lambda: dialog.submit('Yes'), color='green')
+                            ui.button('No', on_click=lambda: dialog.submit('No'), color='red')
+                    async def delete_family_confirm():
+                        result = await dialog
+                        if result == 'Yes': await delete_family
+                        else: ui.notify(f'Cancelled. You\'re still in the trip.')
+                    ui.button('Delete Family', on_click=delete_family_confirm, color='red').classes('w-full')
                 else:
                     ui.button('Leave Family', on_click=leave_family, color='red').classes('w-full')
                 ui.button('Copy Family ID to clipboard', on_click=lambda: ui.clipboard.write(family_id), color='indigo').classes('w-full')
@@ -1848,7 +1919,7 @@ async def settings_page(request: Request):
 
     user_id = await retrieve_user_id_from_session_id(session_id)
 
-    ui.label(f'Settings for {user_id}').classes('text-2xl font-bold mb-6 text-center text-indigo')
+    ui.label(f'Personal Settings').classes('text-2xl font-bold mb-6 text-center text-indigo')
 
     with ui.tabs().classes('w-full') as tabs:
         general_tab = ui.tab('General', icon='person')
