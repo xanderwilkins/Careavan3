@@ -1788,7 +1788,7 @@ async def family_page(request: Request):
                     async def delete_family_confirm():
                         result = await dialog
                         if result == 'Yes': await delete_family
-                        else: ui.notify(f'Cancelled. You\'re still in the trip.')
+                        else: ui.notify(f'Cancelled. You\'re still in the family.')
                     ui.button('Delete Family', on_click=delete_family_confirm, color='red').classes('w-full')
                 else:
                     ui.button('Leave Family', on_click=leave_family, color='red').classes('w-full')
