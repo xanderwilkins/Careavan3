@@ -72,8 +72,15 @@ ui.add_head_html('''
     <!-- App name when added to home screen -->
     <meta name="apple-mobile-web-app-title" content="Careavan">
 
-    <!-- iOS home screen icon (make sure this path is valid) -->
-    <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/apple/419/automobile_1f697.png">
+    <link rel="apple-touch-icon" href="/icons/apple-icon-120.png" sizes="120x120">
+    <link rel="apple-touch-icon" href="/icons/apple-icon-152.png" sizes="152x152">
+    <link rel="apple-touch-icon" href="/icons/apple-icon-167.png" sizes="167x167">
+    <link rel="apple-touch-icon" href="/icons/apple-icon-180.png" sizes="180x180">
+    
+    <!-- Splash screens (optional, for launch) -->
+    <link rel="apple-touch-startup-image" href="/splash/launch-640x1136.png" media="(device-width: 320px)">
+    <link rel="apple-touch-startup-image" href="/splash/launch-750x1334.png" media="(device-width: 375px)">
+    <link rel="apple-touch-startup-image" href="/splash/launch-1125x2436.png" media="(device-width: 375px) and (-webkit-device-pixel-ratio: 3)">
 ''')
 
 with sqlite3.connect(DATABASE_PATH) as con:
@@ -1109,7 +1116,7 @@ async def trips_page(request: Request):
                         #ui.separator()
         with ui.tab_panel(create):
             ui.label("Create a new trip on behalf of your family.")
-            ui.label("Please enter the exact street address of the location for destination.")
+            ui.label("Please enter the exact street address of the location for destination. You can find all of the trips as well as their corresponding addresses in the discover page.")
 
             destination_input = ui.select(options=list(DESTINATIONS.keys()), with_input=True,
                 on_change=lambda e: ui.notify(e.value)).classes('w-full')
@@ -1811,8 +1818,6 @@ async def family_page(request: Request):
                 name_input = ui.input('Family Name', value='').props('outlined clearable').classes('w-full mb-3')
                 #description_input = ui.input('Family Description', value='').props('outlined clearable').classes('w-full mb-3')
                 description_input = ui.textarea(label='Family Description').classes('w-full')
-
-                ui.label('Upload a new family photo:').classes('text-sm mb-2')
 
                 async def save_family_info():
                     if not name_input.value:
